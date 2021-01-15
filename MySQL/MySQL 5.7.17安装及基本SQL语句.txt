@@ -1,0 +1,501 @@
+MySQL数据库 
+
+
+数据库基本理论：
+
+
+RDBMS -------  Relation Database Management System 	关系型数据库管理系统  
+
+
+数据的存储形式：
+
+	数据库 
+		表 
+			行
+			字段 
+	
+
+约束  Constraint	
+
+	域约束：数据类型约束
+		保证某字段的数据类型一致
+
+	外键约束：引用完整性约束(InnoDB)
+		一个表中某字段的数据必须在与之相关的其他表的相关联字段中存在
+
+	主键约束	primary key  
+		某字段能惟一标识此字段所属的实体，并且不允许为空
+		一个表只能有一个主键
+
+	惟一键约束
+		某字段能惟一标识此字段所属的实体，可以为空
+		一个表可以有多个惟一键
+
+	检查性约束
+		保证某字段中不能出现违反常理的数据，例如年龄
+		
+
+事务  Transaction
+	保证多个操作要么同时执行成功， 要么同时执行失败
+	
+	
+
+
+		
+数据库管理软件：
+
+关系型数据库管理软件：
+
+	MySQL 开源     
+		MariaDB   
+		
+	Oracle   商业级的数据管理软件  
+	
+	SQL Server  
+	
+	DB2     IBM 
+	
+	postgreSQL   
+
+
+非关系型数据库管理软件：NoSQL
+
+	redis	-----    缓存服务器 
+	HBase
+	mongoDB
+	
+
+	
+SQL语句   结构化查询语句：
+
+	DDL	数据定义语言
+		create, drop, alter
+		
+	DML	数据操纵语言
+		select, update, delete, insert 
+	
+	DCL	数据控制语言
+		grant
+		revoke  
+	
+
+		
+		
+		
+MySQL存储引擎 Storage Engine
+
+	针对数据表 
+
+	MyISAM
+		不支持事务，只支持表级锁
+		不支持外键
+		支持B树索引、全文FULLTEXT索引、空间索引
+		支持表压缩
+		性能好，适用于查询较多(数据仓库)的情况
+		
+	InnoDB	MySQL 5.5 默认使用
+		支持事务，保证多个操作同时成功执行 
+		支持行级锁
+		支持使用表空间(Table Space)
+		支持raw磁盘设备(无文件系统的设备)
+		适用于在线事务处理系统(在线交易系统OLTP)
+		
+		
+	MRG_MYISAM
+		将两个或两个以上的MYISAM表(表结构要一致)合并成一个表使用
+		
+	CSV
+		使用文本文件的方式保存表
+		数据库移植时使用
+		
+		
+	ARCHIVE
+		用于数据挖掘
+		
+	MEMORY
+		所有表存储在内存中
+		用于创建临时表
+		不支持事务、分布式事务、检查点
+	BLACKHOLE	
+		MySQL主从复制架构
+		
+不建议使用混合式存储引擎，即所有对象的存储引擎要一致 		
+		
+		
+		
+		
+		
+		
+MySQL安装类型：			https://www.mysql.com/
+	rpm软件
+	源码编译(cmake)
+	通用二进制格式
+		
+		
+安装rpm MySQL 5.7.17
+
+1) 准备工作
+
+关闭SELinux, 防火墙，修改主机名
+
+2) 准备本地yum仓库
+
+[root@node01 ~]# createrepo /mysql57/
+
+[root@node01 ~]# cat /etc/yum.repos.d/centos.repo
+[centos]
+name=centos7u2
+baseurl=ftp://172.16.8.100/centos7u2
+enabled=1
+gpgcheck=0
+
+
+[mysql5.7]
+name=mysql5.7
+baseurl=ftp://172.16.8.252/software/mysql
+enabled=1
+gpgcheck=0
+
+
+[root@node01 ~]# yum clean all
+[root@node01 ~]# yum makecache 
+		
+3) 安装mysql-server
+
+[root@db_server_01 ~]# rpm -qa | grep mariadb
+mariadb-libs-5.5.44-2.el7.centos.x86_64
+
+[root@db_server_01 ~]# rpm -e --nodeps mariadb-libs
+
+
+[root@db_server_01 ~]# yum install -y mysql-community-server
+
+
+4) 准备一个独立的数据目录  
+
+[root@db_server_01 ~]# df -hT | grep mysql
+/dev/mapper/vg01-lv01   ext4      9.8G   37M  9.2G   1% /var/lib/mysql
+
+[root@db_server_01 ~]# rm -rf /var/lib/mysql/* 
+
+[root@db_server_01 ~]# chown -R mysql.mysql /var/lib/mysql
+
+
+5) 启动mysqld服务
+
+[root@db_server_01 ~]# systemctl start mysqld
+[root@db_server_01 ~]# systemctl enable mysqld
+
+[root@db_server_01 ~]# netstat -antp | grep mysql
+tcp6       0      0 :::3306                 :::*                    LISTEN      7000/mysqld         
+
+
+6) 查询root用户密码，修改密码 
+
+[root@db_server_01 ~]# grep password /var/log/mysqld.log 
+
+	2018-08-16T04:07:47.215972Z 1 [Note] A temporary password is generated for root@localhost: hNs<74pMoDwz
+
+5.7修改密码要求密码的复杂度  
+	
+[root@db_server_01 ~]# mysqladmin -u root -p password "WWW.1.com"
+Enter password: 
+
+
+
+7) 登录mysql
+
+[root@db_server_01 ~]# mysql -u root -p
+Enter password: 
+
+[root@db_server_01 ~]# mysql -uroot -pWWW.1.com
+
+
+
+
+
+
+数据库相关的操作：
+
+1、查看数据库 
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.00 sec)
+
+
+information_schema： 所有数据库、所有数据表的元数据信息 
+
+mysql：mysql用户、权限信息
+
+performance_schema：数据库中发生的事件信息
+
+sys：简化的performance_schema
+
+
+2、创建数据库 
+
+mysql> create database game;
+
+mysql> create database db01 charset utf8;
+
+	charset utf8：指定db01数据库使用的字符编码为utf8 
+
+
+
+3、查看创建数据库的信息
+
+mysql> show create database game;
++----------+-----------------------------------------------------------------+
+| Database | Create Database                                                 |
++----------+-----------------------------------------------------------------+
+| game     | CREATE DATABASE `game` /*!40100 DEFAULT CHARACTER SET latin1 */ |
++----------+-----------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+
+4、删除数据库
+
+mysql> drop database game;
+
+
+
+
+
+数据表基本操作：
+
+1、查看表 
+
+mysql> use testdb;
+
+mysql> show tables;
+
+
+2、创建表 
+
+create table tb_name(字段1名称 数据类型 [属性], 字段2名称 数据类型, 字段3名称 数据类型.......);
+
+数据类型： 
+
+	数字型
+	
+		int	整型 
+		
+		tinyint, smallint, mediumint, bigint
+		
+		float(5,2)	单精度浮点数
+		double(5,20)	双精度浮点数 
+		
+			5：总长度    23.14
+			2：小位数的长度 
+			
+		numeric(5,2)   精确数字, 财务计算    
+			
+		
+	字符型
+	
+		char(10)	定长字符	
+		varchar(10)	可变长字符  	abc 
+	
+		text   文本 
+			tinytext, smalltext, longtext 
+			
+		
+		enum("男", "女")      枚举
+		
+			
+	日期时间型
+		
+		date	日期   YYYY-MM-DD 
+		time	时间   hh:mm:ss
+		datetime  	   YYYY-MM-DD HH:MM:SS 
+		year		   YYYY 
+
+其他属性：
+
+	1、primary key     主键  
+	2、auto_increment  自动增长    id  
+	3、not null 	   不允许为空 
+	4、default "string"		设置字段的默认值  
+	5、int unsigned   		无符号整型
+	
+
+
+		
+示例01：
+	
+mysql> create table game_account(
+    -> username char(20),
+    -> password char(30),
+    -> level tinyint,
+    -> role varchar(50));
+Query OK, 0 rows affected (0.49 sec)
+		
+
+		
+示例02：
+
+mysql> create table worker(
+    -> id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    -> name CHAR(20),
+    -> age TINYINT,
+    -> gender ENUM("M", "F"),
+    -> career CHAR(20) default "unknown");
+Query OK, 0 rows affected (0.20 sec)
+
+
+示例03：
+
+mysql> create table worker_02 like worker; 
+
+
+		
+		
+3、查看表结构  
+
+mysql> desc game_account;
++----------+-------------+------+-----+---------+-------+
+| Field    | Type        | Null | Key | Default | Extra |
++----------+-------------+------+-----+---------+-------+
+| username | char(20)    | YES  |     | NULL    |       |
+| password | char(30)    | YES  |     | NULL    |       |
+| level    | tinyint(4)  | YES  |     | NULL    |       |
+| role     | varchar(50) | YES  |     | NULL    |       |
++----------+-------------+------+-----+---------+-------+
+4 rows in set (0.00 sec)
+
+
+
+4、删除表 
+
+mysql> drop table game_account; 
+
+
+	
+	
+5、查看创建表的语句 
+
+mysql> show create table worker\G; 
+*************************** 1. row ***************************
+       Table: worker
+Create Table: CREATE TABLE `worker` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` char(20) DEFAULT NULL,
+  `age` tinyint(4) DEFAULT NULL,
+  `gender` enum('M','F') DEFAULT NULL,
+  `career` char(20) DEFAULT 'unknown',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+
+ENGINE=InnoDB：存储引擎
+
+
+mysql> show engines\G;   >>>查看服务器支持的存储引擎 
+
+
+
+
+创建tb_01表，指定其存储引擎为MyISAM
+
+mysql> create table tb_01(id INT) engine=MyISAM; 
+
+mysql> show create table tb_01;
++-------+-----------------------------------------------------------------------------------------+
+| Table | Create Table                                                                            |
++-------+-----------------------------------------------------------------------------------------+
+| tb_01 | CREATE TABLE `tb_01` (
+  `id` int(11) DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 |
++-------+-----------------------------------------------------------------------------------------+
+
+
+存储引擎映射的文件类型：
+
+	InnoDB的文件类型：
+	
+		.frm    表结构信息 
+		.ibd	表数据、索引信息 
+
+	MyISAM的文件类型：
+		
+		.frm   表结构信息 
+		.MYD   表数据信息 
+		.MYI   表的索引信息 
+
+
+指定表数据的最大行数 
+
+mysql> create table tb_02(id INT) MAX_ROWS=10000;
+
+
+
+
+
+6、修改表结构 
+
+alter table tb_name ..... 
+
+1) 修改表名 
+
+# ALTER TABLE tb_name RENAME new_tb_name
+
+mysql> alter table worker rename employee;
+
+
+2) 添加字段 
+
+# ALTER TABLE tb_name ADD 字段名称 字段定义(数据类型、属性)
+
+mysql> alter table employee add salary INT NOT NULL;		>>>默认添加到表的末尾 
+
+mysql> alter table employee add worker_id CHAR(10) FIRST;	>>>FIRST表示在表前添加字段 
+
+mysql> alter table employee add department CHAR(20) AFTER gender;
+
+
+3) 删除字段 
+
+# ALTER TABLE tb_name DROP 字段名称  
+
+mysql> alter table employee drop worker_id;
+
+
+4) 修改字段名称 
+
+# ALTER TABLE tb_name CHANGE 旧字段名称 新字段名称 字段定义 
+
+mysql> alter table employee change gender sex ENUM("M","F");
+
+mysql> alter table employee change sex gender CHAR(2) NOT NULL default "M"; 
+
+
+
+5) 修改字段定义 
+
+# ALTER TABLE tb_name MODIFY 字段名称 字段定义  
+
+mysql> alter table employee modify age tinyint not null;
+
+
+6) 删除主键 
+
+# ALTER TABLE tb_name DROP PRIMARY KEY  
+
+mysql> alter table employee drop primary key;
+
+
+
+7) 添加主键 
+
+# ALTER TABLE tb_name ADD PRIMARY KEY (字段名称)
+
+mysql> ALTER TABLE employee ADD PRIMARY KEY (id);
+
+

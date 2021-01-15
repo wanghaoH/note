@@ -1,0 +1,51 @@
+TCPWrapper
+
+	七层防火墙 
+		根据应用层进程实现数据过滤 
+		
+		
+	四层防火墙
+		iptables
+		firewalld
+
+
+依赖两个文件：
+
+	/etc/hosts.allow
+	/etc/hosts.deny
+	
+
+示例01：通过tcpwrapper禁止访问ftp服务
+
+[root@node_01 ~]# cat /etc/hosts.deny
+
+vsftpd:192.168.122.199
+	
+vsftpd:192.168.122.0/255.255.255.0
+		
+vsftpd:192.168.122.0/255.255.255.0 except 192.168.122.1
+		
+		
+
+注意：只有加载libwrap.so.0库文件的应用程序可以通过tcpwrapper进行访问控制 
+
+[root@node_01 ~]# ldd /usr/sbin/vsftpd | grep -i wrap
+	libwrap.so.0 => /lib64/libwrap.so.0 (0x00007f1cfe882000)
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		

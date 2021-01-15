@@ -1,0 +1,53 @@
+源码编译安装MySQL 5.7
+
+[root@mysqltest ~]# rpm -qa | grep mariadb
+mariadb-libs-5.5.44-2.el7.centos.x86_64
+[root@mysqltest ~]# rpm -e --nodeps mariadb-libs
+
+[root@mysqltest ~]# yum install -y cmake
+
+[root@mysqltest ~]# useradd -M -s /sbin/nologin mysql
+[root@mysqltest ~]# mkdir /mydata/data -p
+[root@mysqltest ~]# chown -R mysql.mysql /mydata/data/
+
+[root@mysqltest ~]# tar zxf mysql-boost-5.7.17.tar.gz 
+[root@mysql57 mysql-5.7.17]# cmake \
+> -DCMAKE_INSTALL_PREFIX=/usr/local/mysql \
+> -DMYSQL_UNIX_ADDR=/tmp/mysql.sock \
+> -DDEFAULT_CHARSET=utf8 \
+> -DDEFAULT_COLLATION=utf8_general_ci \
+> -DMYSQL_DATADIR=/mydata/data \
+> -DMYSQL_TCP_PORT=3306 \
+> -DWITH_BOOST=boost/boost_1_59_0/ \
+> -DWITH_MYISAM_STORAGE_ENGINE=1 \
+> -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+> -DWITH_ARCHIVE_STORAGE_ENGINE=1 \
+> -DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+
+[root@mysqltest mysql-5.7.17]# make
+[root@mysqltest mysql-5.7.17]# make install
+
+
+[root@mysqltest ~]# chown -R root.mysql /usr/local/mysql/
+
+
+[root@mysql57 ~]# /usr/local/mysql/bin/mysqld --initialize --user=mysql --basedir=/usr/local/mysql --datadir=/mydata/data
+
+[root@mysqltest data]# /usr/local/mysql/bin/mysqld_safe --user=mysql &
+[root@mysqltest data]# ss -antp | grep mysqld
+LISTEN     0      80          :::3306                    :::*                   users:(("mysqld",pid=63756,fd=20))
+[root@mysqltest data]# 
+
+
+[root@mysqltest data]# cat /etc/profile.d/mysql.sh 
+	export PATH=$PATH:/usr/local/mysql/bin
+	
+[root@mysqltest data]# source /etc/profile.d/mysql.sh
+
+
+[root@mysqltest data]# mysql -u root -p
+
+mysql> ALTER USER 'root'@'localhost' IDENTIFIED BY 'Www.1.com';
+
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0.00 sec)

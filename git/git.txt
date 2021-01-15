@@ -1,0 +1,445 @@
+git	版本控制系统
+
+	作用：
+		记录文件的修改情况，便于回退到某一个版本
+		有助于多人同时编辑某个文件 
+
+
+安装Git
+
+在主机上运行git命令，如果可以看到git命令的帮助，意味着git已经安装
+
+[root@localhost ~]# git
+usage: git [--version] [--exec-path[=GIT_EXEC_PATH]] [--html-path]
+           [-p|--paginate|--no-pager] [--no-replace-objects]
+           [--bare] [--git-dir=GIT_DIR] [--work-tree=GIT_WORK_TREE]
+           [--help] COMMAND [ARGS]
+		   
+如果没有安装，可直接使用如下命令进行安装 ：
+
+[root@node01 ~]# yum install -y git
+ 
+ 
+ 使用git前的基本设置
+ 
+[root@node01 ~]# git config --global user.name "Martin"
+[root@node01 ~]# git config --global user.email "Martin@qq.com"
+[root@node01 ~]# git config --global color.ui true
+		
+
+
+创建版本库
+
+什么是版本库呢？版本库又名仓库，英文名repository，你可以简单理解成一个目录，这个目录里面的所有文件都可以被Git管理起来，每个文件的修改、删除，Git都能跟踪，以便任何时刻都可以追踪历史，或者在将来某个时刻可以“还原”。
+
+例如将/project目录创建为版本库
+
+[root@node01 ~]# mkdir /project
+[root@node01 ~]# cd /project/
+[root@node01 project]# git init
+Initialized empty Git repository in /project/.git/
+[root@node01 project]# ls -a
+.  ..  .git
+[root@node01 project]# 
+
+
+版本库创建完成后，在该目录会生成.git隐藏目录，通过该目录下的文件，git可实现跟踪文件记录文件的修改信息
+
+
+
+将文件添加到版本库
+
+Git是一个版本控制系统，所有的版本控制系统只能记录文本文件的改动情况，不能记录二进制文件(如图形、视频、word文档等)的改动
+
+例如：在版本库中创建文件1.txt，将其该文件添加到版本库，可按如下方式操作：
+
+[root@node01 project]# touch 1.txt
+[root@node01 project]# git status 
+
+[root@node01 project]# git add 1.txt
+[root@node01 project]# git commit -m "create new 1.txt"
+[master (root-commit) 3e8ce87] create new 1.txt
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 1.txt
+
+[root@node01 project]# git status 		
+# On branch master
+nothing to commit, working directory clean	 >>>>修改提交后，显示工作目录是干净状态
+[root@node01 project]# 
+
+
+git commit命令的-m选项用于设置本次提交的说明信息
+
+
+
+
+再次修改1.txt文件  
+
+通过 git status命令可查看当前版本库的状态(即是否有文件改动的情况)
+
+[root@node01 project]# git status 
+# On branch master
+# Changes not staged for commit:
+#   (use "git add <file>..." to update what will be committed)
+#   (use "git checkout -- <file>..." to discard changes in working directory)
+#
+#	modified:   1.txt
+#
+no changes added to commit (use "git add" and/or "git commit -a")
+
+
+使用git diff <file_name>具体查看一个文件的修改情况 
+
+[root@node01 project]# git diff 1.txt
+diff --git a/1.txt b/1.txt
+index e69de29..21d56a0 100644
+--- a/1.txt
++++ b/1.txt
+@@ -0,0 +1 @@
++1111111111111111
+
+
+提交文件修改
+
+[root@node01 project]# git add 1.txt
+[root@node01 project]# git commit -m "add new 1111"
+[master fdf9d68] add new 1111
+ 1 file changed, 1 insertion(+)
+[root@node01 project]# 
+[root@node01 project]# 
+[root@node01 project]# git status 
+# On branch master
+nothing to commit, working directory clean
+[root@node01 project]# 
+
+
+
+
+
+
+
+版本回退 
+
+通过git log <file>可查看某个文件更改的版本
+
+[root@node01 project]# git log 1.txt
+
+[root@node01 project]# git log --pretty=oneline 1.txt
+996cc77127d43c4a2052d70d797297280e10de54 add new 222
+fdf9d68f82cc39f5183668acad07daedb8d052c7 add new 1111
+3e8ce875c4c0fa192d7e5f3222bff27ba76ada3d create new 1.txt
+
+
+
+在进行版本回退时，使用HEAD代表当前版本，HEAD^代表上一个版本，HEAD^^代表上上个版本，还可以使用HEAD~10代表前10个版本
+
+[root@node01 project]# git reset --hard HEAD^
+HEAD is now at fdf9d68 add new 1111
+[root@node01 project]# 
+[root@node01 project]# cat 1.txt 
+1111111111111111
+[root@node01 project]# 
+
+
+
+也可以使用如下命令格式：
+
+[root@node01 project] git reset --hard <commit_id>
+
+[root@node01 project]# git reflog 1.txt
+fdf9d68 HEAD@{0}: reset: moving to HEAD^
+996cc77 HEAD@{1}: commit: add new 222
+fdf9d68 HEAD@{2}: commit: add new 1111
+3e8ce87 HEAD@{3}: commit (initial): create new 1.txt
+[root@node01 project]# 
+[root@node01 project]# git reset --hard 996cc77
+
+
+
+
+
+
+工作区和暂存区
+
+工作区
+
+	工作区指的就是工作目录(存放文件的目录)，例如上面的/git/learngit 
+	
+
+版本库和暂存区
+
+	工作区中有一个隐藏目录.git，称为版本库
+	版本库中保存了很多东西，其中最重要的就是一个被称为stage或者index的暂存区、git自动创建的master分支，及指向master分支的HEAD指针
+	
+	
+git提交文件修改过程：
+
+	1) 使用git add命令，实际上是将文件的修改保存到暂存区
+	2) 使用gid commit命令，是将暂存区中的修改保存到当前分支
+
+
+查看工作区状态变化
+
+1) 再次改动文件
+
+[root@node01 project]# git status 
+# On branch master
+# Changes not staged for commit:
+#   (use "git add <file>..." to update what will be committed)
+#   (use "git checkout -- <file>..." to discard changes in working directory)
+#
+#	modified:   1.txt
+#
+no changes added to commit (use "git add" and/or "git commit -a")
+
+
+2) 将修改提交到暂存区， 再次查看状态 
+
+[root@node01 project]# git add 1.txt
+[root@node01 project]# git status 
+# On branch master
+# Changes to be committed:
+#   (use "git reset HEAD <file>..." to unstage)
+#
+#	modified:   1.txt
+#
+
+
+3) 将暂存区的修改提交到工作区，再次查看状态 
+
+[root@node01 project]# git commit -m "add new 333333"
+[master 5424335] add new 333333
+ 1 file changed, 1 insertion(+)
+[root@node01 project]# 
+[root@node01 project]# git status 
+# On branch master
+nothing to commit, working directory clean
+ 	
+	
+	
+	
+	
+
+
+撤销修改 
+
+1、对于尚未添加到暂存区的修改，可直接通过编辑原文件或者使用git checkout -- <file>的方式进行撤销 
+
+[root@node01 project]# git checkout -- 1.txt
+[root@node01 project]# git status 
+# On branch master
+nothing to commit, working directory clean
+
+
+2、对于已经添加到暂存区，但还没有git commit的修改，可使用git reset HEAD <file>的方式撤销 
+
+[root@node01 project]# vim 1.txt 
+
+[root@node01 project]# git add 1.txt
+[root@node01 project]# git status 
+# On branch master
+# Changes to be committed:
+#   (use "git reset HEAD <file>..." to unstage)
+#
+#	modified:   1.txt
+#
+[root@node01 project]# git reset HEAD 1.txt
+Unstaged changes after reset:
+M	1.txt
+
+[root@node01 project]# git status 
+# On branch master
+# Changes not staged for commit:
+#   (use "git add <file>..." to update what will be committed)
+#   (use "git checkout -- <file>..." to discard changes in working directory)
+#
+#	modified:   1.txt
+#
+no changes added to commit (use "git add" and/or "git commit -a")
+
+[root@node01 project]# git checkout -- 1.txt
+[root@node01 project]# git status 
+# On branch master
+nothing to commit, working directory clean
+[root@node01 project]# cat 1.txt 
+1111111111111111
+22222222222222222
+3333333333333
+
+
+
+3、对于已经添加到暂存区，并已经提交的修改可通过git reset --hard <commit_id>的方式进行撤销
+
+[root@node01 project]# vim 1.txt 
+
+[root@node01 project]# git add 1.txt
+[root@node01 project]# git commit -m "add new 44444444"
+[master 240af53] add new 44444444
+ 1 file changed, 1 insertion(+)
+ 
+[root@node01 project]# git reflog 1.txt
+240af53 HEAD@{0}: commit: add new 44444444
+5424335 HEAD@{1}: commit: add new 333333
+996cc77 HEAD@{2}: reset: moving to 996cc77
+3e8ce87 HEAD@{3}: reset: moving to 3e8ce87
+996cc77 HEAD@{4}: reset: moving to 996cc77
+fdf9d68 HEAD@{5}: reset: moving to HEAD^
+996cc77 HEAD@{6}: commit: add new 222
+fdf9d68 HEAD@{7}: commit: add new 1111
+3e8ce87 HEAD@{8}: commit (initial): create new 1.txt
+[root@node01 project]# 
+[root@node01 project]# 
+[root@node01 project]# git reset --hard 5424335
+HEAD is now at 5424335 add new 333333
+
+
+
+
+
+
+
+
+分支管理
+
+git版本库所有的操作都是运行在分支上，git仓库创建时会建立默认的分支，名称为master；所有的操作都在master分支上进行
+在对版本库中的文件进行操作时，可以创建不同的分支，不同的操作运行在不同的分支上，不同分支上的操作不会相互干扰，操作进行完成后，可以合并不同分支上的操作
+
+查看所有分支
+
+[root@node01 project]# git branch 
+* master
+
+其中前面带有"*"的代表当前分支
+
+示例：
+
+1、创建分支dev，并切换到dev分支
+
+方法1）
+
+[root@node01 project]# git branch dev
+[root@node01 project]# git branch 
+  dev
+* master
+[root@node01 project]# git checkout dev 
+Switched to branch 'dev'
+[root@node01 project]# git branch 
+* dev
+  master
+
+
+方法2）
+
+[root@node01 project]# git checkout -b game
+Switched to a new branch 'game'
+[root@node01 project]# 
+[root@node01 project]# git branch 
+  dev
+* game
+  master
+
+
+
+
+
+
+2、在dev分支上对1.txt文件进行修改，并提交
+
+[root@node01 project]# git checkout dev 
+Switched to branch 'dev'
+[root@node01 project]# git branch 
+* dev
+  game
+  master
+[root@node01 project]# vim 1.txt 
+[root@node01 project]# git add 1.txt
+[root@node01 project]# git commit -m "add new 666"
+[dev d83dae8] add new 666
+ 1 file changed, 2 insertions(+)
+[root@node01 project]# git status 
+# On branch dev
+nothing to commit, working directory clean
+
+
+切换到master分支验证是否可以查看到修改
+
+
+
+4、将dev分支的提交合并到master分支，再次查看readme.txt文件的内容 
+
+格式：将指定的分支修改合并到当前分支
+
+[root@node01 project]# git merge <branch_name>
+
+
+[root@node01 project]# git checkout master 
+Switched to branch 'master'
+[root@node01 project]# git branch 
+  dev
+  game
+* master
+[root@node01 project]# git merge dev 
+Updating bb6fb7a..d83dae8
+Fast-forward
+ 1.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+[root@node01 project]# 
+[root@node01 project]# cat 1.txt 
+1111111111111111
+22222222222222222
+3333333333333
+444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444
+55555
+
+666666666666666
+
+	
+5、删除分支
+
+[root@node01 project]# git branch 
+  dev
+  game
+* master
+[root@node01 project]# git branch -d dev
+Deleted branch dev (was d83dae8).
+[root@node01 project]# git branch -d game 
+Deleted branch game (was bb6fb7a).
+[root@node01 project]# 
+[root@node01 project]# git branch 
+* master
+
+
+
+
+
+部署git服务器
+
+
+示例：使用gitlab部署git服务器
+
+[root@gitlab ~]# hostnamectl set-hostname gitlab.linux.com 
+
+[root@gitlab ~]# cat /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+192.168.122.10	gitlab.linux.com
+[root@gitlab ~]# 
+
+
+安装gitlab软件
+
+[root@gitlab ~]# yum install -y gitlab-ce-10.1.5-ce.0.el7.x86_64.rpm 
+
+[root@gitlab ~]# vim /etc/gitlab/gitlab.rb 
+
+  13 external_url 'http://gitlab.linux.com'
+
+[root@gitlab ~]# gitlab-ctl reconfigure 
+
+
+在浏览器访问gitlab
+
+	http://gitlab.linux.com 
+
+

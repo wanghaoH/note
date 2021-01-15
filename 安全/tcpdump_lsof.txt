@@ -1,0 +1,169 @@
+抓包工具 ---  tcpdump
+
+常用选项：
+
+	-i  网卡名称 
+	-c  100	   抓包的次数 
+	-nn        显示结果时以数字的方式显示IP地址及端口号
+	port  22   抓端口为22的数据
+		src port 22    
+		dst port 22
+		
+	host 192.168.1.1    抓IP地址是192.168.1.1的数据 
+		src host 192.168.1.1
+		dst host 192.168.1.1
+		
+	net 192.168.1.0/24	
+	
+	
+1、抓取访问web的数据 
+
+	
+	
+	S:   SYN
+	.：  ACK
+	F：  FIN  
+	
+[root@node_01 ~]# tcpdump -i eth0 -nn port 80
+	
+[root@node_01 ~]# tcpdump -i eth0 -nn dst port 80 
+
+[root@node_01 ~]# tcpdump -i eth0 -nn src port 80
+
+
+选项：-w 文件名称   
+
+[root@node_01 ~]# tcpdump -i eth0 -nn dst port 80 -w /tmp/http_result
+
+
+
+2、根据多个条件抓取数据 
+
+[root@node_01 ~]# tcpdump -i eth0 -nn dst port 80 and src host 192.168.122.10
+
+
+3、根据特定的协议抓取数据 
+
+支持的协议：
+	icmp 
+	arp
+	vrrp   ----  高可用的协议 
+	
+	tcp 
+	udp 
+
+[root@node_01 ~]# tcpdump -i eth0 -nn icmp and src host 192.168.122.1
+
+[root@node_01 ~]# tcpdump -i eth0 -nn arp
+
+
+
+and/or/not   写多个条件
+
+[root@node_01 ~]# tcpdump -i eth0 -nn dst port 80 and \(src host 192.168.122.10 or src host 192.168.122.1\)
+
+[root@node_01 ~]# tcpdump -i eth0 -nn dst port 80 and not src host 192.168.122.10
+
+
+
+
+
+
+lsof 
+
+	查看系统进程、文件的占用信息 
+	
+[root@node_01 ~]# lsof 
+
+1) 查看占用端口对应的进程 
+
+[root@node_01 ~]# lsof -i :80		---> TCP协议 
+
+COMMAND  PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+httpd   5529   root    4u  IPv6  67560      0t0  TCP *:http (LISTEN)
+httpd   5546 apache    4u  IPv6  67560      0t0  TCP *:http (LISTEN)
+
+[root@node_01 ~]# lsof -i udp:68
+COMMAND  PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+dhclient 601 root    6u  IPv4  15656      0t0  UDP *:bootpc 
+[root@node_01 ~]# 
+
+
+2) 显示启动的所有tcp/udp的进程及端口
+
+[root@node_01 ~]# lsof -i tcp -nP
+
+[root@node_01 ~]# lsof -i udp -nP
+
+
+
+3) 显示某个文件被占用的信息
+
+[root@node_01 ~]# lsof | grep fstab
+
+[root@node_01 ~]# lsof | grep testdir
+dd        6159        root    1w      REG             252,17  20659839         12 /testdir/1.txt
+
+[root@node_01 ~]# lsof +D /testdir/			>>>> 递归显示目录下所有文件被占用的信息 
+COMMAND  PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+dd      6159 root    1w   REG 252,17 45517553   12 /testdir/1.txt
+
+
+
+4) 显示某用户打开的所有进程信息 
+
+[root@node_01 ~]# lsof -u martin
+
+
+
+
+日志文件 
+
+1) /var/log/messages
+
+	系统日志，记录系统的启动信息 
+	
+
+2) /var/log/secure
+
+	安全日志，记录的sudo用户的操作行为
+	
+	
+3) /var/log/wtmp
+
+	记录所有用户的登录信息 
+	
+	使用last命令查看 
+	
+	
+	
+	
+4) /var/log/btmp
+
+	记录所有用户的失败登录行为
+	
+	使用lastb命令查看 
+	
+	[root@node_01 ~]# lastb 
+	root     tty1                          Tue Sep 18 14:12 - 14:12  (00:00)    
+
+	btmp begins Tue Sep 18 14:12:51 2018
+
+	
+5) /var/log/dmesg 
+
+	内核产生的日志信息 
+	
+	使用dmesg命令查看 
+	
+	服务器对硬件做任何改动不成功 
+	
+	
+
+进入救援模式 
+
+	光盘引导/U盘引导
+	
+	# chroot /mnt/sysimage
+	
+

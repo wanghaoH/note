@@ -1,0 +1,77 @@
+sudo机制
+
+	以普通用户登录系统 
+	
+/etc/sudoers文件   ----   visudo命令
+
+文件格式：
+
+	用户名       机器名称=命令名称
+	
+	
+1、针对单个用户授权 
+
+格式：
+
+	用户名       机器名称=命令名称
+
+[root@node_01 ~]# visudo 
+
+	99 martin  ALL=/usr/sbin/fdisk
+	
+[root@node_01 ~]# su - martin
+[martin@node_01 ~]$ sudo fdisk /dev/vda 
+
+以sudo机制执行命令后，会在系统的/var/log/secure日志里有相应的记录 
+
+	martin  ALL=/usr/sbin/fdisk /dev/vdb
+
+	martin  ALL=/usr/sbin/fdisk /dev/vdb,/usr/bin/yum
+
+	mike    ALL=NOPASSWD:/usr/bin/yum
+
+	martin  ALL=NOPASSWD:ALL,!/usr/bin/rm,!/usr/bin/yum
+
+	
+	
+2、针对用户组授权
+
+格式： 
+
+	%用户组名	机器名称=命令
+	
+	%jishu  ALL=NOPASSWD:/usr/bin/yum
+
+	
+注意：
+
+	
+
+
+3、命令别名
+
+	Cmnd_Alias SOFTWARE = /bin/rpm, /usr/bin/up2date, /usr/bin/yum			>>>定义别名
+	martin  ALL=NOPASSWD:SOFTWARE											>>>使用别名
+
+
+自定义别名时，要求别名均为大写
+
+
+
+============================================
+
+修改文件属性：
+
+查看文件属性
+
+[root@node_01 ~]# lsattr /tmp/1.txt
+---------------- /tmp/1.txt
+
+i属性：防删除，修改内容 
+
+[root@node_01 ~]# chattr +i /tmp/1.txt 
+[root@node_01 ~]# lsattr /tmp/1.txt
+----i----------- /tmp/1.txt
+
+
+

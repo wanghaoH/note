@@ -1,0 +1,679 @@
+SQL语句 ---  Structure Query Language 结构化查询语句 
+ 
+	DDL		数据定义语言
+		create, drop, alter
+	DML		数据操纵语言
+		insert, delete, select, update
+	DCL		数据控制语言
+		grant, revoke
+
+
+
+
+
+DML 数据操纵语言
+
+1、添加数据    INSERT INTO 
+
+INSERT INTO tb_name(字段1名称,字段2名称,....)  VALUES(value1,value2,....)
+
+注意：
+	字段的数据类型是字符型、日期/时间型，对应的值需要使用双引号、单引号
+	
+
+1) 插入单条数据 
+
+mysql> INSERT INTO account(Account_name,Account_password, Account_level) VALUES("king","123456",60);
+
+mysql> SELECT * FROM account;
++--------------+------------------+---------------+---------------+----------------+
+| Account_name | Account_password | Account_level | Account_money | Account_gender |
++--------------+------------------+---------------+---------------+----------------+
+| king         | 123456           |            60 |          NULL | M              |
++--------------+------------------+---------------+---------------+----------------+
+1 row in set (0.00 sec)
+
+2) 插入多条数据 
+
+mysql> INSERT INTO account(Account_name ,Account_password, Account_level) VALUES("queen","123",1),("son", "redhat", 2),("sunzi","456",1);
+
+
+3) 向表中所有字段插入数据 
+
+mysql> INSERT INTO account VALUES("haha","linux",10,25000000,"F");
+ 
+
+
+2、删除数据 
+
+DELETE FROM <tb_name> WHERE <condition>
+
+mysql> DELETE FROM account WHERE Account_name="haha";
+
+
+3、更新数据 
+
+UPDATE <tb_name> SET <字段名称>=<新值> WHERE <条件>
+
+mysql> UPDATE account SET Account_password = "1q2w3e4r..1" WHERE Account_name = "king";
+
+
+
+
+在shell中执行SQL语句 
+
+[root@db_server_01 ~]# mysql -uroot -pWWW.1.com -e "show databases"
+
+
+
+约束：
+
+1、主键 primary key 
+	
+	1) 不能重复
+	2) 不能为空 
+	
+2、惟一键  
+	
+	1) 不能重复
+		
+mysql> ALTER TABLE tb_01 ADD UNIQUE (username);
+
+
+mysql> desc tb_01;
++----------+----------+------+-----+---------+----------------+
+| Field    | Type     | Null | Key | Default | Extra          |
++----------+----------+------+-----+---------+----------------+
+| id       | int(11)  | NO   | PRI | NULL    | auto_increment |
+| username | char(20) | YES  | UNI | NULL    |                |
+| password | char(20) | YES  |     | NULL    |                |
++----------+----------+------+-----+---------+----------------+
+3 rows in set (0.00 sec)
+	
+
+3、外键   Foreign key 
+
+mysql> create table worker(
+    -> id INT PRIMARY KEY AUTO_INCREMENT,
+    -> name CHAR(20));
+Query OK, 0 rows affected (0.18 sec)
+
+mysql> create table salary(
+    -> id INT PRIMARY KEY AUTO_INCREMENT,
+    -> worker_id INT,
+    -> salary INT);
+Query OK, 0 rows affected (0.18 sec)
+
+
+创建外键
+
+# ALTER TABLE 表名 ADD FOREIGN KEY (字段名称) REFERENCES 表名称(字段名称) 
+
+
+mysql> ALTER TABLE salary ADD FOREIGN KEY(worker_id) REFERENCES worker(id);
+
+mysql> desc salary;
++-----------+---------+------+-----+---------+----------------+
+| Field     | Type    | Null | Key | Default | Extra          |
++-----------+---------+------+-----+---------+----------------+
+| id        | int(11) | NO   | PRI | NULL    | auto_increment |
+| worker_id | int(11) | YES  | MUL | NULL    |                |
+| salary    | int(11) | YES  |     | NULL    |                |
++-----------+---------+------+-----+---------+----------------+
+3 rows in set (0.00 sec)
+
+
+
+
+
+
+
+
+
+
+
+数据查询
+
+	单表查询
+	多表查询/连接查询
+	子查询/嵌套查询
+
+
+导入jiaowu数据库
+
+[root@node01 ~]# mysql -u root -p < jiaowu.sql 
+Enter password: 
+	
+	
+	
+单表查询 
+
+SELECT col_name1, col_name2, .... FROM tb_name [查询子操作] 
+
+mysql> SELECT * FROM tutors;
+
+mysql> SELECT Tname,Age FROM tutors;
+
+mysql> SELECT Tname AS 教师, Age AS 年龄 FROM tutors;			>>>设置字段的别名 
+mysql> SELECT Tname 教师, Age 年龄 FROM tutors;
+
+
+select_statement查询子句：
+
+1、按指定的条件查询数据 
+
+	WHERE condition 
+	
+条件的写法：
+
+	数字操作符：	=, !=, >, >=, <, <=
+
+	逻辑操作符：	AND， OR 
+
+mysql> SELECT * FROM tutors WHERE Age > 80;
+
+
+mysql> SELECT * FROM tutors WHERE Age >= 70 AND Age <= 80;
+
+BETWEEN n AND m 
+
+mysql> SELECT * FROM tutors WHERE Age BETWEEN 70 AND 80;
+
+
+
+mysql> SELECT * FROM tutors WHERE Tname = "OuYangfeng" OR Tname = "YiDeng" OR Tname = "HuYidao";
+
+IN(value1,value2,value3)
+
+mysql> SELECT * FROM tutors WHERE Tname IN("OuYangfeng","YiDeng","HuYidao");
+
+
+对空值NULL的处理
+
+	IS NULL ,  IS NOT NULL 
+	
+mysql> select Name from students where TID is null; 
+
+mysql> select Name from students where TID is not null;
+
+
+
+
+模糊查询
+
+方法1)
+
+	LIKE "通配符表达式"
+	
+		通配符：
+			%	任意长度任意字符
+			_	任意单个字符
+
+
+
+mysql> SELECT * FROM tutors WHERE Tname LIKE "%ang%";
+
+mysql> SELECT * FROM tutors WHERE Tname LIKE "Y%" OR Tname LIKE "H%";
+
+
+方法2)
+
+	RLIKE "正则表达式"
+
+mysql> SELECT * FROM tutors WHERE Tname RLIKE "^[HY]";
+
+mysql> SELECT * FROM tutors WHERE Tname RLIKE "ang";
+
+
+
+
+
+
+2、按指定的字段内容排序 
+
+	ORDER BY <col_name> [ASC|DESC]
+	
+		DESC：降序
+		ASC：升序，默认
+	
+mysql> SELECT * FROM tutors ORDER BY Age;
+
+mysql> SELECT * FROM tutors ORDER BY Age DESC;
+
+
+3、限制结果的输出行数
+
+	LIMIT [n,]m
+	
+		忽略前n行，共显示m行 
+
+mysql> SELECT * FROM tutors LIMIT 3;
+
+mysql> SELECT * FROM tutors LIMIT 2,3;
+
+mysql> SELECT * FROM tutors ORDER BY Age LIMIT 1;
+
+mysql> SELECT * FROM tutors WHERE Gender="M" ORDER BY Age DESC LIMIT 1;
+
+
+
+4、按指定字段将数据进行分组
+
+	GROUP BY <字段名称> [HAVING <条件>]
+	
+聚合函数：
+
+	SUM(字段名称)		求和
+	AVG(字段名称)		平均值
+	MAX(字段名称)		最大值
+	MIN(字段名称)		最小值
+	COUNT(字段名称)		计数
+	
+mysql> SELECT AVG(Age) AS 平均年龄 FROM tutors;
+
+mysql> SELECT AVG(Age) AS 平均年龄,Gender AS 性别  FROM tutors GROUP BY Gender;
+
+mysql> SELECT AVG(Age) AS 平均年龄,Gender AS 性别  FROM tutors GROUP BY Gender HAVING 平均年龄>65;
+
+
+
+
+
+
+连接查询(多表查询)
+
+	内连接/自然连接 
+	外连接
+		左外连接
+		右外连接
+
+前提条件：多张表之间要存在相关联的字段
+
+
+内连接 
+
+	特征：只有相关联字段具有相同的值时，才显示对应的结果 
+	
+	语法：
+	
+		SELECT tb1.col, tb2.col,.... FROM tb1 INNER JOIN tb2 ON tb1.col=tb2.col 
+
+
+mysql> SELECT students.Name, students.Age, students.Gender, courses.Cname
+    -> FROM students INNER JOIN courses
+    -> ON students.CID1=courses.CID;
+
+
+mysql> SELECT students.Name, students.Age, students.Gender, tutors.Tname 
+    -> FROM students INNER JOIN tutors
+    -> ON students.TID=tutors.TID;
+
+	
+mysql> SELECT students.Name, students.Age, students.Gender, courses.Cname, tutors.Tname
+    -> FROM students INNER JOIN courses INNER JOIN tutors
+    -> ON students.CID1=courses.CID AND courses.TID=tutors.TID;
+
+
+自然连接
+
+mysql> SELECT students.Name, students.Age, students.Gender, courses.Cname
+    -> FROM students,courses
+    -> WHERE students.CID1=courses.CID;
+
+
+
+外连接
+
+左外连接 
+	
+	特征：以左表为主，显示左表所有数据，右表中没有关联的数据时，显示为NULL
+	
+	语法： 
+	
+	SELECT tb1.col, tb2.col,.... FROM tb1 LEFT JOIN tb2 ON tb1.col=tb2.col 
+
+mysql> SELECT students.Name, students.Age, students.Gender, courses.Cname
+    -> FROM students LEFT JOIN courses
+    -> ON students.CID2=courses.CID;
+	
+		
+右外连接 
+
+		特征：以右表为主，显示右表所有数据，左表中没有关联的数据时，显示为NULL
+
+		语法： 
+	
+		SELECT tb1.col, tb2.col,.... FROM tb1 RIGHT JOIN tb2 ON tb1.col=tb2.col 
+
+
+
+
+嵌套查询/子查询 
+
+	以查询的结果作为另外一个查询的条件、数据源使用
+		
+	mysql> SELECT * FROM tutors WHERE Age > (SELECT AVG(Age) FROM tutors);
+	
+		
+		
+
+
+视图 view 
+
+	创建一个临时表，保存常用的多表连接查询的结果 
+
+	作用：加快多表查询的速度 
+	
+	
+
+1、创建视图
+
+# create view view_name as select_statement	[WITH CASCADED]
+
+mysql> create view stu_first_courses
+    -> as
+    -> select students.Name, courses.Cname  from students INNER JOIN courses ON students.CID1 = courses.CID;
+Query OK, 0 rows affected (0.04 sec)
+
+
+2、删除视图 
+
+mysql> drop view stu_first_courses;
+
+
+
+
+
+
+		
+		
+		
+		
+用户权限控制 
+
+用户管理 
+
+	格式：user@host		
+		
+		root@localhost
+		
+	host写法：
+		1、IP地址	martin@192.168.1.1
+		2、网段		martin@192.168.1.%
+		3、所有		martin@%
+		4、主机名	martin@node02.linux.com 
+		
+1) 创建用户 
+
+CREATE USER <user> IDENTIFIED BY <password>
+
+mysql> CREATE USER 'martin'@'localhost' IDENTIFIED BY 'Www.1.com';
+mysql> FLUSH PRIVILEGES;
+
+mysql> SELECT user();
++------------------+
+| user()           |
++------------------+
+| martin@localhost |
++------------------+
+1 row in set (0.00 sec)
+		
+		
+2) 设置用户的密码 
+
+方法1) 
+
+mysql> SET PASSWORD FOR 'martin'@'localhost' = PASSWORD("Www.3.com");
+
+mysql> FLUSH PRIVILEGES;
+
+	
+		
+方法2) 
+
+[root@node01 mysql]# mysqladmin -u martin -p password "Www.4.com"
+		
+		
+方法3)
+
+mysql> ALTER USER 'martin'@"localhost" IDENTIFIED BY "Www.2.com";
+
+mysql> FLUSH PRIVILEGES;
+
+	
+
+3) 存放用户信息的表   -------   mysql.user 
+
+mysql> SELECT User,Host,authentication_string FROM mysql.user;
++-----------+-----------+-------------------------------------------+
+| User      | Host      | authentication_string                     |
++-----------+-----------+-------------------------------------------+
+| root      | localhost | *559EEE7F74FC37F4FAD46A371DB9BB7FCFFEC07E |
+| mysql.sys | localhost | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE |
+| martin    | localhost | *E98BC2494435DF70D164D506EB319CD2FF595431 |
++-----------+-----------+-------------------------------------------+
+
+
+4) 删除用户 
+
+mysql> DROP USER 'martin'@'localhost';
+
+mysql> FLUSH PRIVILEGES;
+
+
+
+
+权限控制 
+
+1) 查看用户权限 
+
+mysql> SHOW GRANTS FOR 'martin'@'localhost';
+
+
+2) 授权 
+
+GRANT <权限>,... ON <库名>.<表名> TO <用户名> [IDENTIFIED BY "password"]
+
+	权限：
+	
+		select 
+		select,update,create,alter 
+		all 
+		
+	库名.表名：
+	
+		jiaowu.tutors
+		jiaowu.*
+		*.*		
+
+mysql> GRANT select ON jiaowu.tutors TO 'martin'@'localhost';
+mysql> FLUSH PRIVILEGES;
+
+
+mysql> GRANT select,insert ON jiaowu.* TO 'admin'@'localhost' IDENTIFIED BY 'Www.1.com';
+mysql> FLUSH PRIVILEGES;
+
+
+示例：建立远程登录用户alice，允许在192.168.122.137上登录数据库服务器，允许其查询jiaowu库中的tutors表，并允许其更新表中的年龄字段 
+
+mysql> GRANT select, update(Age) ON jiaowu.tutors TO 'alice'@'192.168.122.137' IDENTIFIED BY 'Www.1.com';
+
+mysql> FLUSH PRIVILEGES;
+
+客户端：
+
+[root@node03 ~]# yum install -y mysql-community-client.x86_64 
+
+[root@node03 ~]# mysql -u alice -p -h 192.168.122.105
+
+
+3) 撤销权限 
+
+REVOKE <权限> ON <库名>.<表名> FROM <用户名>
+
+mysql> REVOKE select ON jiaowu.tutors FROM "martin"@"localhost";
+mysql> FLUSH PRIVILEGES;
+
+
+https://dev.mysql.com/doc/refman/5.7/en/grant.html
+
+
+
+
+恢复root密码：
+
+1、编辑配置文件my.cnf 
+
+[root@db_server_01 ~]# vim /etc/my.cnf
+
+	[mysqld]
+	skip-grant-tables=1		>>>跳过授权表 
+
+
+2、重启mysqld服务 
+
+[root@db_server_01 ~]# systemctl restart mysqld
+
+
+3、登录数据库，修改密码 
+
+[root@db_server_01 ~]# mysql -u root -p
+
+mysql> update mysql.user set authentication_string=PASSWORD("WWW.1.com") where user="root" and host="localhost";
+
+mysql> flush privileges;
+
+
+4、删除配置文件的配置项，再次重启服务 
+
+
+
+
+
+
+
+
+
+
+
+
+索引  index 
+
+	作用： 提升查询数据的速度 
+	
+
+1、创建索引 
+
+create index index_name on tb_name(col_name, col_name,....)
+
+无索引的情况：
+
+mysql> explain select * from test_user where username="user99986"\G;
+*************************** 1. row ***************************
+           id: 1
+  select_type: SIMPLE
+        table: test_user
+   partitions: NULL
+         type: ALL
+possible_keys: NULL
+          key: NULL
+      key_len: NULL
+          ref: NULL
+         rows: 96520			>>>扫描了多少行数据 
+     filtered: 10.00
+        Extra: Using where
+1 row in set, 1 warning (0.00 sec)
+
+
+创建索引：
+
+mysql> create index user_name on test_user(username);
+
+mysql> explain select * from test_user where username="user99986"\G;
+*************************** 1. row ***************************
+           id: 1
+  select_type: SIMPLE
+        table: test_user
+   partitions: NULL
+         type: ref
+possible_keys: user_name
+          key: user_name
+      key_len: 31
+          ref: const
+         rows: 1			>>>
+     filtered: 100.00
+        Extra: NULL
+1 row in set, 1 warning (0.00 sec)
+
+
+
+
+2、查看索引
+
+show index from tb_name 
+
+mysql> show index from test_user;
+
+mysql> show index from test_user\G;
+*************************** 1. row ***************************
+        Table: test_user
+   Non_unique: 1
+     Key_name: user_name
+ Seq_in_index: 1
+  Column_name: username
+    Collation: A
+  Cardinality: 96520
+     Sub_part: NULL
+       Packed: NULL
+         Null: YES
+   Index_type: BTREE
+      Comment: 
+Index_comment: 
+1 row in set (0.00 sec)
+
+
+
+3、删除索引 	
+	
+DROP INDEX index_name ON tbl_name
+
+mysql> drop index user_name on test_user;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

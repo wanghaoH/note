@@ -1,0 +1,708 @@
+web网站服务器部署 
+
+	网页类型：
+	
+		静态网页
+		
+			所有客户端访问时，看到的数据是一致的 
+			html语言 div + css 
+			*.html 
+			
+		
+		动态网页 	
+			类似于脚本文件，根据传递的参数不同，返回的页面结果不同的
+			
+			PHP 					*.php 
+			Java(JSP)				*.jsp 
+			Python(Django模块)		*.wsgi
+		
+
+
+URL地址、URI地址
+
+	URL：Union Resource Location   统一资源定位符
+	
+		作用：在多台服务器上定位一个资源 
+		
+		组成： 
+		
+			协议://主机名或者IP地址/文件名称 
+			
+				ftp://172.16.8.252 
+		
+				https://order.jd.com/center/list.action
+	
+
+
+	URI地址   Union Resource Ientifier  统一资源标识符
+	
+		作用：在同一台机器标识唯一的文件 
+		
+		
+	
+
+HTTP-----HyperText Transfer Protocol	超文本传输协议
+
+
+
+http/0.9：仅纯文本(超链接)，ASCII
+  HTML：HyperText Mark Language 超文本标记语言 
+  <h1>This is a test. </h1>
+		
+
+http/1.0
+
+	MIME机制：Multipurpose Internet Mail Extension，多用途互联网邮件扩展
+		将非文本数据在传输前重新编码为文本格式再传输，接收方能够用相反的方式将其还原成以前的格式，还能够调用相应的程序打开此文件
+		
+	缓存机制
+	
+		服务器端缓存
+		客户端缓存 
+
+
+HTTP/1.1 (无状态连接)
+	
+	增强了缓存机制的管理
+	长连接keepalive机制
+		超时时间
+		每个长连接请求文件个数的限制
+
+		
+			
+
+HTTP的状态码   status code：
+
+	2xx：200	成功 
+	
+	[root@localhost ~]# curl -I http://www.baidu.com
+	HTTP/1.1 200 OK
+
+	3xx：成功的访问 
+
+		301：永久的重定向
+		302：临时的重定向
+	
+
+	4xx：客户端错误 
+	
+		403：权限拒绝
+		404：文件找不到 
+		
+	5xx：服务端的错误 
+	
+		502
+		505
+		503
+
+
+
+
+HTTP的请求资源的方法：
+
+	GET：用于获取资源
+	
+	POST/PUT：上传资源 
+	
+		PUT：传上去的数据不会对服务器的原有数据有任何修改 
+		POST：传上去的数据会对服务器的数据有修改的行为 
+
+	HEAD	返回HTTP协议的首部 
+			
+
+
+
+web服务器响应并发连接(qps--> query per second)的方式：
+
+1、单进程/单线程机制
+	依次处理每个请求
+	
+2、多进程/多线程机制(稳定)
+	每个请求生成子进程响应
+	
+	
+3、一个进程响应多个请求(单进程多线程)
+	事件驱动机制
+	通知机制
+	
+	
+4、多进程响应多个请求		
+		
+		
+		
+		
+		
+		
+web服务器的主要操作：
+
+1、建立连接----接受或拒绝客户端连接请求
+2、接收请求----通过网络读取HTTP请求报文
+3、处理请求----解析请求报文并做出相应的动作
+4、访问资源----访问请求报文中所请求的资源
+5、构建响应----使用正确的首部生成HTTP响应报文 
+6、发送响应----向客户端发送生成的响应报文
+7、记录日志----当已经完成的HTTP事务记录进日志文件
+
+
+
+
+
+软件介绍
+
+客户端代理软件
+	IE, firefox, chrome, opera, safari	
+	
+	
+服务器端软件
+	httpd,  Nginx, Tengine, IIS
+
+	
+应用程序服务器
+
+	PHP：
+	
+		LAMP ----  Linux + Apache + MySQL + PHP 
+		LNMP ----  Linux + Nginx + MySQL + PHP 
+		
+	Java: 
+	
+		Tomcat/Resin 	开源软件 
+		
+		商业：
+			WebLogical		Oracle公司
+			WebSphere		IBM公司
+	
+	
+	Python 
+	
+		Nginx + Django
+		Nginx + Flask
+	
+	
+
+
+httpd安装及配置
+
+
+ASF：Apache Software Foundation		http://www.apache.org/
+	web: httpd 
+		 Tomcat
+		 Hadoop
+		 		 
+httpd:			http://httpd.apache.org/
+	Web Server, Open Source
+	2.4, 2.2
+	
+httpd软件安装：
+	rpm 
+	源码软件 
+	
+	
+httpd特性：
+	事先创建子进程
+	按需维持适当的进程
+	模块化设计，核心较小，各种功能都能通过模块添加；模块可以在运行时启用
+		支持运行配置，支持单独编译模块
+	支持多种虚拟主机的配置
+		基于IP的虚拟主机
+		基于端口的虚拟主机
+		基于域名的虚拟主机 
+	支持https协议(mod_ssl)
+	支持用户认证
+	支持基于IP或主机名的访问控制机制
+	支持每目录的访问控制 
+	支持URL重写   
+	
+	
+安装httpd 
+
+[root@web ~]# yum install -y httpd
+
+[root@web ~]# systemctl start httpd
+[root@web ~]# systemctl enable httpd
+Created symlink from /etc/systemd/system/multi-user.target.wants/httpd.service to /usr/lib/systemd/system/httpd.service.
+
+[root@web ~]# ps aux | grep httpd
+root      1964  0.2  0.9 226128  5000 ?        Ss   13:39   0:00 /usr/sbin/httpd -DFOREGROUND
+apache    1965  0.0  0.6 228212  3128 ?        S    13:39   0:00 /usr/sbin/httpd -DFOREGROUND
+apache    1966  0.0  0.6 228212  3128 ?        S    13:39   0:00 /usr/sbin/httpd -DFOREGROUND
+apache    1967  0.0  0.6 228212  3128 ?        S    13:39   0:00 /usr/sbin/httpd -DFOREGROUND
+apache    1968  0.0  0.6 228212  3128 ?        S    13:39   0:00 /usr/sbin/httpd -DFOREGROUND
+apache    1969  0.0  0.6 228212  3128 ?        S    13:39   0:00 /usr/sbin/httpd -DFOREGROUND
+
+[root@web ~]# netstat -antp | grep httpd
+LISTEN     0      128         :::80                      :::*                   users:(("httpd",pid=1969,fd=4),("httpd",pid=1968,fd=4),("httpd",pid=1967,fd=4),("httpd",pid=1966,fd=4),("httpd",pid=1965,fd=4),("httpd",pid=1964,fd=4))
+
+
+httpd目录：
+
+	/etc/httpd/conf 				主配置文件   httpd.conf 
+	/etc/httpd/conf.d/*.conf 		子配置文件 
+	/var/log/httpd 					日志 
+		access_log 		访问日志
+		error_log		错误日志 
+	
+
+	/var/www/html 		默认静态页面的目录
+	/var/www/cgi-bin	默认动态页面的目录 
+
+	
+CGI：Common Gateway Interface 通用网关接口
+	让web服务器启动某应用程序解析动态页面的机制
+	开发动态网页的语言：
+		perl, python, java(Servlet JSP), php 
+
+		PHP			LAMP,LNMP
+		JSP			Tomcat, Weblogical
+		Python		mod_wsgi模块
+
+		
+
+	
+	
+httpd配置文件 --- /etc/httpd/conf/httpd.conf
+
+directive value
+	指令不区分大小写
+	value区分大小写
+
+	
+1) 设置httpd的主目录 
+
+ServerRoot "/etc/httpd"
+
+
+2) 设置监听的IP地址及端口 
+
+Listen 12.34.56.78:80
+
+
+3) 指定子配置文件的路径及名称 
+
+Include conf.modules.d/*.conf
+
+4) 设置运行httpd进程的用户及用户组名称 
+
+User apache
+Group apache
+	
+5) 长连接相关的配置   
+
+KeepAlive On
+MaxKeepAliveRequests 100
+KeepAliveTimeout 15
+
+6) 设置管理员的邮箱  
+
+ServerAdmin root@localhost
+	
+	
+7) 设置网站的主机名 
+
+ServerName www.a.org
+	
+
+8) 设置网页目录 
+
+DocumentRoot "/var/www/html"
+	
+	
+9) 设置网页的首页名称 
+
+DirectoryIndex index.html
+	
+	
+10) 针对目录授权  
+
+<Directory "/var/www/html">
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+	
+A)、Require all granted 
+
+	允许所有客户端访问该目录的页面文件 
+	
+	
+B)、Options Indexes FollowSymLinks
+	定义目录下的网页文件被访问时的访问属性
+		None：不支持任何选项
+		Indexes：无index.html时，列出所有网页文件，禁用
+		FollowSymLinks：存在软链接网页文件时，是否只可以访问对应源网页文件的内容，禁用
+		SymLinksifOwnerMatch：允许访问软链接，但所属必须和运行httpd进程的所属一致
+		Includes：允许执行服务器端包含(SSI格式的网页文件)，禁用
+		ExecCGI：允许运行CGI脚本
+		MultiViews：内容协商机制(根据客户端的语言不同显示不同的网页)，多视图；禁用
+		All：启用所有选项	
+	
+c)、 AllowOverride None
+
+		是否允许建立.htaccess文件覆盖授权配置 
+	
+
+	
+	
+基于客户端IP地址的认证 
+
+1) 允许所有客户端访问 
+
+	Require all granted 
+	
+2) 拒绝所有端访问 
+
+	Require all denied 
+	
+3) 仅允许某主机访问 
+
+	Require ip 192.168.1.1
+
+4) 明确拒绝某主机访问 
+
+<RequireAll>
+    Require all granted
+    Require not ip 10.252.46.165
+</RequireAll>	
+	
+	
+	
+	
+	
+支持用户认证	
+	
+示例： 客户端通过用户martin访问首页 (/var/www/html)
+
+1) 创建用户名密码 
+
+[root@web ~]# htpasswd -c /etc/httpd/webuser martin
+New password: 
+Re-type new password: 
+Adding password for user martin
+
+2) 编辑配置文件  
+
+[root@web ~]# vim /etc/httpd/conf/httpd.conf
+
+<Directory "/var/www/html">
+	...
+    AllowOverride AuthConfig
+    AuthType Basic
+    AuthName "Resttrict test"
+    AuthUserFile /etc/httpd/webuser
+    Require valid-user
+	...
+</Directory>	
+	
+[root@web ~]# httpd -t			>>>检测配置文件语法 
+Syntax OK
+[root@web ~]# 
+
+[root@web ~]# systemctl restart httpd
+
+	
+3) 再次添加一个用户
+
+[root@web ~]# htpasswd /etc/httpd/webuser admin
+New password: 
+Re-type new password: 
+Adding password for user admin
+
+[root@web ~]# cat /etc/httpd/webuser 
+martin:$apr1$EcOg96K5$vJaLY8YdL515OYIiwdoQX/
+admin:$apr1$VBTxuLpG$6nBoJCRM8kF8QxahPZHDI.
+[root@web ~]# 
+	
+	
+
+	
+隐藏软件版本、操作系统类型 
+
+
+ServerTokens Prod 
+
+	
+	
+	
+11) 指定错误日志的名称及级别 
+
+ErrorLog "logs/error_log"
+
+# Possible values include: debug, info, notice, warn, error, crit, alert, emerg.
+
+LogLevel warn
+	
+	
+12) 定义访问日志的格式 
+
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+
+	%h：客户端地址 
+	%l：记录客户端登录系统的用户名
+	%u：记录访问页面时的用户名 
+	%t：访问时间 
+	%r：HTTP请求报文中的第一行内容 (请求方法、URI地址、HTTP版本)
+	%>s：HTTP状态码
+	%b: 记录HTTP响应报文的大小 (Bytes)
+	%{Referer}i：记录超链接地址 
+	%{User-Agent}i：记录客户端的浏览器类型
+	
+
+PV： Page View   页面访问量 
+
+UV： User View   用户访问量 
+
+	
+13) 指定访问日志的名称及格式
+
+CustomLog "logs/access_log" combined	
+	
+
+
+14) 定义访问别名 
+
+    Alias /mp3 /data/mp3
+    <Directory "/data/mp3">
+        Require all granted
+    </Directory>
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+虚拟主机 VirtualHost 
+
+	作用：在一台物理服务器上运行多个网站 
+	
+	类型：
+		基于域名的虚拟主机(常用) 
+		基于IP地址的虚拟主机
+		基于端口的虚拟方式
+	
+	
+配置虚拟主机： 
+
+<VirtualHost IP:port>
+	ServerName www.a.org 
+	DocumentRoot /a.org 
+	ErrorLog ...
+	CustomLog ...
+</VirtualHost>	
+	
+	
+示例： 基于主机名的虚拟主机
+
+	www.a.org 			网页目录：/var/www/html/a.org 			日志：/var/log/httpd/a.org 
+	www.b.org 			网页目录：/web/b.org 					日志：/var/log/httpd/b.org 
+
+www.a.org ：
+
+1) 准备目录 
+
+[root@web ~]# mkdir /var/www/html/a.org
+[root@web ~]# vim /var/www/html/a.org/index.html
+[root@web ~]# mkdir /var/log/httpd/a.org
+[root@web ~]#  
+
+2) 编辑a.org的配置文件  
+
+[root@web ~]# cat /etc/httpd/conf.d/a.org.conf
+
+<VirtualHost 192.168.122.105:80>
+   ServerName www.a.org
+   DocumentRoot /var/www/html/a.org
+   ErrorLog /var/log/httpd/a.org/error_log
+   CustomLog /var/log/httpd/a.org/access_log combined
+</VirtualHost>
+
+[root@web ~]# httpd -t
+Syntax OK
+
+[root@web ~]# systemctl restart httpd
+
+	
+www.b.org:
+
+[root@web ~]# cat /etc/httpd/conf.d/b.org.conf 
+
+<VirtualHost 192.168.122.105:80>
+   ServerName www.b.org
+   DocumentRoot /web/b.org
+   ErrorLog /var/log/httpd/b.org/error_log
+   CustomLog /var/log/httpd/b.org/access_log combined
+</VirtualHost>
+
+<Directory "/web/b.org">
+   Require all granted
+</Directory>
+	
+
+示例：基于IP地址的虚拟主机
+
+	www.c.org 		网页目录：/c.org		192.168.122.105 
+	www.d.org 		网页目录：/d.org 		192.168.122.106
+	
+www.c.org:
+
+[root@web ~]# cat /etc/httpd/conf.d/c.org.conf 
+
+<VirtualHost 192.168.122.105:80>
+   ServerName www.c.org
+   DocumentRoot /c.org
+   ErrorLog /var/log/httpd/c.org/error_log
+   CustomLog /var/log/httpd/c.org/access_log combined
+</VirtualHost>
+
+<Directory "/c.org">
+  Require all granted
+</Directory>
+	
+
+www.d.org:
+
+[root@web ~]# cat /etc/httpd/conf.d/d.org.conf 
+<VirtualHost 192.168.122.106:80>
+   ServerName www.d.org
+   DocumentRoot /d.org
+   ErrorLog /var/log/httpd/d.org/error_log
+   CustomLog /var/log/httpd/d.org/access_log combined
+</VirtualHost>
+
+<Directory "/d.org">
+  Require all granted
+</Directory>
+[root@web ~]# 
+	
+	
+	
+	
+	
+	
+	
+	
+搭建基于https的加密网站 -----  www.sh.com 
+
+1) 生成证书及密钥文件  
+
+[root@web ~]# mkdir /etc/httpd/ssl
+
+[root@web ~]# openssl genrsa 1024 > /etc/httpd/ssl/server.key			>>>生成加密数据的密钥 
+Generating RSA private key, 1024 bit long modulus
+...................................................++++++
+...........++++++
+e is 65537 (0x10001)
+
+[root@web ~]# openssl req -new -key /etc/httpd/ssl/server.key > /etc/httpd/ssl/server.csr	>>> 生成证书申请 
+	
+[root@web ~]# openssl req -x509 -days 365 -key /etc/httpd/ssl/server.key -in /etc/httpd/ssl/server.csr > /etc/httpd/ssl/server.crt
+	
+	
+2) 安装mod_ssl模块 
+
+[root@web ~]# yum install -y mod_ssl
+
+[root@web conf.d]# vim /etc/httpd/conf.d/ssl.conf 
+
+	<VirtualHost _default_:443>
+
+	DocumentRoot "/sh"
+	ServerName www.sh.com:443
+	...
+
+	SSLCertificateFile /etc/httpd/ssl/server.crt
+
+	SSLCertificateKeyFile /etc/httpd/ssl/server.key
+
+	<Directory "/sh">
+	   Require all granted
+	</Directory>
+	
+	
+3) 重启服务，验证端口 
+
+[root@web conf.d]# httpd -t
+Syntax OK
+[root@web conf.d]# systemctl restart httpd
+[root@web conf.d]# netstat -antp | grep httpd
+LISTEN     0      128         :::80                      :::*                   users:(("httpd",pid=1866,fd=4),("httpd",pid=1865,fd=4),("httpd",pid=1864,fd=4),("httpd",pid=1863,fd=4),("httpd",pid=1862,fd=4),("httpd",pid=1861,fd=4))
+LISTEN     0      128         :::443                     :::*                   users:(("httpd",pid=1866,fd=6),("httpd",pid=1865,fd=6),("httpd",pid=1864,fd=6),("httpd",pid=1863,fd=6),("httpd",pid=1862,fd=6),("httpd",pid=1861,fd=6))
+[root@web conf.d]# 
+	
+	
+4) 测试访问 
+
+	https://www.sh.com/
+
+	
+利用URL重写功能，实现域名跳转
+
+	RewriteEngine On
+	RewriteCond %{HTTP_HOST} ^www.sh.com
+	RewriteRule ^/(.*) https://www.sh.com [L]
+	
+	
+
+		%{HTTP_HOST}:  http请求报文中的主机名 
+		RewriteRule  URI地址   新地址 
+	
+		[L]：last终止 
+	
+	
+	
+	
+	
+	
+	
+
+网站压力测试工具 
+
+# ab -n <number> -c <number> URL 
+
+	-n <number>：模拟访问次数 
+	-c <number>：并发连接的次 
+	
+[root@web ~]# ab -n 4000 -c 800 http://www.a.org/index.html
+
+
+		Requests per second:    477.17 [#/sec] (mean)： 每秒完成的请求
+	
+	
+	
+	
+	
+	
+	
+	
+作业：
+
+1、分别配置以下虚拟主机，并配置DNS服务器解析网站主机名，客户端通过DNS服务器解析可通过主机名访问网站
+	bbs.uplooking.com 		网页目录：/bbs 		日志文件目录：/var/log/httpd/bbs
+	discuz.uplooking.com	网页目录：/discuz	日志文件目录：/var/log/httpd/discuz 
+	
+2、要求在bbs网站下创建子目录rpm，客户端访问rpm目录时提供rpm软件的下载
+
+3、在discuz网站下创建子目录private，并要求该目录下的页面只允许本机访问 
+	
+4、部署基于https加密传输的网站  pay.uplooking.com, 要求客户端可直接通过主机名访问  
+
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	

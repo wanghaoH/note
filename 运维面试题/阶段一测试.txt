@@ -1,0 +1,60 @@
+
+准备4台虚拟机，按如下要求配置其IP地址及计算机名称 
+
+	192.168.87.101		node1.linux.com
+	192.168.87.102		node2.linux.com
+	192.168.87.103		node3.linux.com
+	第4台主机由DHCP服务分配IP信息
+
+将node1配置为NTP服务器，要求所有机器时间同步
+
+
+完成如下配置：
+
+1	在node1主机上分别与nod2,node3,node4配置基于密钥的SSH远程
+
+
+2	在node1上配置ftp服务，要求如下：
+		设置/linux目录作为匿名用户的ftp根目录 
+		在/linux目录下创建windows目录，作为匿名用户上传文件的目录，保证匿名用户可上传文件
+		保证匿名用户上传的文件再次访问时可下载 
+
+
+3	在node2上配置nfs服务，要求如下：
+		创建逻辑卷/dev/data/webbbs,自动将其挂载到/web/bbs目录，作为bbs网站的网页目录使用。并以只读方式共享，仅允许node3可挂载使用
+		创建逻辑卷/dev/data/webdiscuz,自动将其挂载到/web/discuz目录，作为discuz网站的网页目录使用。并以只读方式共享，仅允许node3可挂载使用
+
+	
+4	在node3上配置WEB服务，要求如下：
+		搭建网站bbs.uplooking.com, 指定其网页目录为本地的/bbs目录，要求该目录自动挂载nfs服务器中的/web/bbs目录
+		搭建网站discuz.uplooking.com, 指定其网页目录为本地的/discuz目录，要求该目录自动挂载nfs服务器中的/web/discuz目录
+		配置客户端在访问discuz.uplooking.com网站时，需要进行用户名密码认证，用户名为martin,密码为redhat
+		配置bbs.uplooking.com配置仅允许192.168.87.102客户端访问
+
+		分别在两个网站的页面目录下创建子目录private，并仅允许本机可访问该目录下的页面 
+
+
+5	在node1上配置DNS及DHCP服务，为客户端分配IP信息，保证客户端通过域名访问web服务 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

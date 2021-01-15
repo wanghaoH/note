@@ -1,0 +1,405 @@
+Tomcat软件的部署
+
+	作用：
+		1、实现网站服务器
+		2、解析Java语言的web应用程序
+		
+	软件介绍：
+		Tomcat		Apache 开源			http://tomcat.apache.org/
+			通用二进制
+			源码编译
+		Resin 
+		JBoss
+		
+		WebSphere
+		ebLogical 	商业工具
+	
+
+
+安装Tomcat
+
+1、安装JDK
+
+[root@tomcat ~]# rpm -ivh jdk-8u121-linux-x64.rpm 
+
+[root@tomcat jdk1.8.0_121]# tail -2 /etc/profile
+
+export JAVA_HOME=/usr/java/jdk1.8.0_121
+export PATH=$PATH:$JAVA_HOME/bin
+
+[root@tomcat jdk1.8.0_121]# source /etc/profile
+
+[root@tomcat jdk1.8.0_121]# java -version
+java version "1.8.0_121"
+Java(TM) SE Runtime Environment (build 1.8.0_121-b13)
+Java HotSpot(TM) 64-Bit Server VM (build 25.121-b13, mixed mode)
+[root@tomcat jdk1.8.0_121]# 
+
+
+2、安装tomcat
+
+[root@tomcat ~]# tar zxf apache-tomcat-8.5.12.tar.gz -C /usr/local/
+[root@tomcat ~]# ls /usr/local/
+apache-tomcat-8.5.12  bin  etc  games  include  lib  lib64  libexec  sbin  share  src
+[root@tomcat ~]# 
+[root@tomcat ~]# ln -s /usr/local/apache-tomcat-8.5.12  /usr/local/tomcat
+
+[root@tomcat ~]# vim /etc/profile
+
+	export CATALINA_HOME=/usr/local/tomcat
+	
+[root@tomcat ~]# source /etc/profile
+
+
+tomcat目录介绍
+
+	/usr/local/tomcat/bin			工具(二进制程序)
+	/usr/local/tomcat/conf			配置文件    server.xml 
+	/usr/local/tomcat/logs
+	/usr/local/tomcat/webapps		默认的应用程序目录
+
+
+启动tomcat
+
+[root@tomcat ~]# /usr/local/tomcat/bin/startup.sh 
+Using CATALINA_BASE:   /usr/local/tomcat
+Using CATALINA_HOME:   /usr/local/tomcat
+Using CATALINA_TMPDIR: /usr/local/tomcat/temp
+Using JRE_HOME:        /usr/java/jdk1.8.0_121
+Using CLASSPATH:       /usr/local/tomcat/bin/bootstrap.jar:/usr/local/tomcat/bin/tomcat-juli.jar
+Tomcat started.
+
+
+[root@tomcat ~]# ss -antp | grep java
+LISTEN     0      100         :::8009                    :::*                   users:(("java",pid=2627,fd=47))
+LISTEN     0      100         :::8080                    :::*                   users:(("java",pid=2627,fd=46))
+
+
+http://192.168.122.101:8080/
+
+
+
+================增加熵池大小，解决Tomcat在CentOS 7巨慢的问题=================================================
+
+[root@tomcat ~]# cp /usr/lib/systemd/system/rngd.service /etc/systemd/system		[rng-tools软件]
+[root@tomcat ~]# vim /etc/systemd/system/rngd.service 
+	
+	[Service]
+	ExecStart=/sbin/rngd -f -r /dev/urandom
+
+	
+[root@tomcat ~]# systemctl daemon-reload 
+[root@tomcat ~]# systemctl restart rngd
+[root@tomcat ~]# cat /proc/sys/kernel/random/entropy_avail 
+2979
+
+===============================================================================================================
+
+
+
+部署ejforum论坛(Java) 
+
+1、安装MariaDB数据库，并建立ejforum需要的数据库，及授权用户 
+
+[root@tomcat ~]# yum install -y mariadb-server 
+
+[root@tomcat ~]# systemctl start mariadb
+[root@tomcat ~]# systemctl enable mariadb
+
+MariaDB [(none)]> CREATE DATABASE ejforum;
+
+MariaDB [(none)]> GRANT all ON ejforum.* TO "ejforumuser"@"localhost" IDENTIFIED BY "redhat";
+
+MariaDB [(none)]> FLUSH PRIVILEGES;
+
+
+2、安装MySQL连接器
+
+[root@localhost tomcat]# tar zxf mysql-connector-java-5.1.6.tar.gz 
+[root@localhost tomcat]# cd mysql-connector-java-5.1.6
+[root@localhost mysql-connector-java-5.1.6]# ls
+build.xml  CHANGES  COPYING  docs  EXCEPTIONS-CONNECTOR-J  mysql-connector-java-5.1.6-bin.jar  README  README.txt  src
+[root@localhost mysql-connector-java-5.1.6]# cp mysql-connector-java-5.1.6-bin.jar  /usr/local/tomcat/lib/
+[root@localhost mysql-connector-java-5.1.6]# 
+
+
+3、解压缩ejforum软件，并拷贝文件到网站目录 
+
+[root@localhost tomcat]# rm -rf /usr/local/tomcat/webapps/ROOT/*
+[root@localhost tomcat]# unzip ejforum-2.3.zip 
+[root@localhost tomcat]# cd ejforum-2.3
+[root@localhost ejforum-2.3]# cd ejforum/
+[root@localhost ejforum]# cp -r * /usr/local/tomcat/webapps/ROOT/
+
+
+4、编辑WEB-INF文件，指定连接MySQL数据库用户名
+
+[root@localhost ~]# vim /usr/local/tomcat/webapps/ROOT/WEB-INF/conf/config.xml 
+
+[root@tomcat conf]# pwd
+/usr/local/tomcat/webapps/ROOT/WEB-INF/conf
+
+[root@tomcat conf]# vim config.xml 
+
+        <database maxActive="10" maxIdle="10" minIdle="2" maxWait="10000" 
+                          username="ejforumuser" password="redhat" 
+                          driverClassName="com.mysql.jdbc.Driver" 
+                          url="jdbc:mysql://localhost:3306/ejforum?characterEncoding=gbk&amp;autoReconnect=true&amp;autoReconnectForPools=true&amp;zeroDateTimeBehavior=convertToNull"
+                          sqlAdapter="sql.MysqlAdapter"/>
+
+
+5、重启tomcat服务 
+
+[root@tomcat ~]# /usr/local/tomcat/bin/shutdown.sh 
+
+[root@tomcat ~]# /usr/local/tomcat/bin/startup.sh 
+
+
+
+
+部署虚拟主机www.a.org 
+
+	项目目录 ：/usr/local/tomcat/webapps 
+	网页：data01    
+	
+[root@tomcat_server ~]# mkdir /usr/local/tomcat/webapps/data01
+[root@tomcat_server ~]# vim /usr/local/tomcat/webapps/data01/index.jsp
+
+[root@tomcat_server ~]# vim /usr/local/tomcat/conf/server.xml 
+
+      <Host name="www.a.org"  appBase="webapps"
+            unpackWARs="true" autoDeploy="true">
+        <Context path="" docBase="data01" />  
+        <Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+               prefix="www.a.org_access_log" suffix=".txt"
+               pattern="%h %l %u %t &quot;%r&quot; %s %b" />
+      </Host>
+
+	  
+	解释：
+	
+		<Context path=""  docBase="data01" />
+		
+			path=""	定义访问的uri地址，不写表示可以直接通过主机名访问 
+			docBase="data01"，用于指定真实存放网页的目录，相对于appBase   相对路径  
+
+重启tomcat服务			
+			
+/usr/local/tomcat/bin/shutdown.sh 
+/usr/local/tomcat/bin/startup.sh 
+
+
+
+
+
+
+
+
+
+
+
+Tomcat核心配置文件: /usr/local/tomcat/conf/server.xml
+
+<Server>					-----------> Tomcat实例 
+  <Service>					-----------> 定义网站服务
+	<Connector />			-----------> 定义对外提供服务的端口
+	<Engine>				-----------> Tomcat虚拟主机运行的环境
+		<Host>				-----------> Tomcat虚拟主机
+			<Context  />	-----------> 某应用程序的数据文件存放目录 
+		</Host>
+	</Engine>
+  </Service>
+</Server>
+  
+
+
+
+
+
+Tomcat多实例部署 
+
+作用：
+	1、多个实例运行相同的应用，实现负载均衡
+	2、多个实例运行不同的应用 
+	
+配置过程：
+
+配置两个Tomcat实例，分别运行/webapps/ROOT下的网站 
+
+	实例1：
+		目录：/usr/local/tomcat/multi-instance/instace1		8081   8091 
+		
+	实例2：
+		目录：/usr/local/tomcat/multi-instance/instace2		8082   8092 
+
+
+
+1、安装Tomcat
+
+
+1）安装JDK
+
+2）安装Tomcat
+
+2、 创建多实例目录 
+
+[root@localhost tomcat]# mkdir -pv /usr/local/tomcat/multi-instance/instance{1,2}/{conf,logs}
+[root@localhost tomcat]# cd /usr/local/tomcat/multi-instance/
+[root@localhost multi-instance]# ls
+instance1  instance2
+
+将Tomcat安装目录下的conf目录所有配置文件拷贝到对应实例目录 
+
+[root@localhost ~]# cd /usr/local/tomcat/conf/
+[root@localhost conf]# cp /usr/local/tomcat/conf/* /usr/local/tomcat/multi-instance/instance1/conf/
+[root@localhost conf]# cp /usr/local/tomcat/conf/* /usr/local/tomcat/multi-instance/instance2/conf/
+
+
+3、配置每个实例所占用的端口 
+
+[root@localhost conf]# vim /usr/local/tomcat/multi-instance/instance1/conf/server.xml 
+
+<Server port="8091" shutdown="SHUTDOWN">
+
+<Connector port="8081" protocol="HTTP/1.1"
+    connectionTimeout="20000"
+    redirectPort="8443" />
+
+<Host name="localhost"  appBase="/webapps"
+    unpackWARs="true" autoDeploy="true">
+
+[root@localhost conf]# vim /usr/local/tomcat/multi-instance/instance2/conf/server.xml 
+
+<Server port="8092" shutdown="SHUTDOWN">
+
+<Connector port="8082" protocol="HTTP/1.1"
+    connectionTimeout="20000"
+    redirectPort="8443" />
+
+<Host name="localhost"  appBase="/webapps"
+    unpackWARs="true" autoDeploy="true">
+
+
+4、分别在对应实例目录下编写启动脚本 
+
+[root@localhost ~]# vim /usr/local/tomcat/multi-instance/instance1/ins1.sh 
+
+#!/bin/bash
+#instace1 script
+
+
+export JAVA_OPTS='-Xms64m -Xmx128m'
+export CATALINA_HOME=/usr/local/tomcat
+export CATALINA_BASE=/usr/local/tomcat/multi-instance/instance1
+
+
+case $1 in
+start)
+  $CATALINA_HOME/bin/startup.sh
+  ;;
+stop)
+  $CATALINA_HOME/bin/shutdown.sh
+  ;;
+restart)
+  $CATALINA_HOME/bin/shutdown.sh
+  sleep 3
+  $CATALINA_HOME/bin/startup.sh
+  ;;
+esac
+
+
+[root@localhost ~]# vim /usr/local/tomcat/multi-instance/instance2/ins2.sh 
+
+#!/bin/bash
+#instace2 script
+
+. /etc/init.d/functions
+
+export JAVA_OPTS='-Xms64m -Xmx128m'
+export CATALINA_HOME=/usr/local/tomcat
+export CATALINA_BASE=/usr/local/tomcat/multi-instance/instance2
+
+
+case $1 in
+start)
+  $CATALINA_HOME/bin/startup.sh
+  ;;
+stop)
+  $CATALINA_HOME/bin/shutdown.sh
+  ;;
+restart)
+  $CATALINA_HOME/bin/shutdown.sh
+  sleep 5
+  $CATALINA_HOME/bin/startup.sh
+  ;;
+esac
+
+
+5、分别启动两个实例  
+
+[root@localhost instance2]# /usr/local/tomcat/multi-instance/instance1/ins1.sh start
+[root@localhost instance2]# /usr/local/tomcat/multi-instance/instance2/ins2.sh start
+[root@localhost conf]# netstat -antp | grep java
+tcp        0      0 :::8081                     :::*                        LISTEN      3151/java           
+tcp        0      0 :::8082                     :::*                        LISTEN      3235/java           
+tcp        0      0 ::ffff:127.0.0.1:8091       :::*                        LISTEN      3151/java           
+tcp        0      0 :::8009                     :::*                        LISTEN      3151/java    
+
+6、创建网站目录，并测试 
+
+[root@localhost instance2]# mkdir -pv /webapps/ROOT 
+
+通过http://192.168.122.101:8081/，http://192.168.122.101:8082/访问可看到相同的内容，表明成功.
+
+
+
+
+
+
+
+
+Nginx+Tomcat多实例实现负载均衡 
+
+方案1： 客户端所有请求全部代理到后端Tomcat服务器 
+
+upstream tomcatsrv {
+    server 192.168.122.101:8081 weight=1 max_fails=2 fail_timeout=2;
+    server 192.168.122.101:8082 weight=1 max_fails=2 fail_timeout=2;
+}
+
+location / {
+ proxy_pass http://tomcatsrv;
+ proxy_set_header x-real-ip $remote_addr;
+}
+
+
+  
+方案2：客户端对jsp页面访问请求代理到后端Tomcat服务器
+
+upstream tomcatsrv{
+    server 192.168.122.101:8081 weight=1 max_fails=2 fail_timeout=2;
+    server 192.168.122.101:8082 weight=1 max_fails=2 fail_timeout=2;
+}
+
+server {
+	....
+	location / {
+		root html;
+		index index.html;
+	}
+
+	location ~* \.jsp$ {
+		proxy_pass http://tomcatsrv;
+		proxy_set_header x-real-ip $remote_addr;
+	}
+}
+
+
+为保证后端Tomcat服务器可以记录客户端真实IP，需要修改Tomcat主配置文件中的日志格式：
+
+[root@tomcat ROOT]# vim /usr/local/tomcat/multi-instance/instance1/conf/server.xml 
+
+<Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+     prefix="localhost_access_log." suffix=".txt"
+     pattern="%{x-real-ip}i %l %u %t &quot;%r&quot; %s %b" />
+

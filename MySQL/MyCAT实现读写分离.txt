@@ -1,0 +1,128 @@
+MyCAT实现数据库读写分离
+
+
+环境描述 ：
+
+	192.168.122.101		node01		master
+	192.168.122.102		node02		slave
+	192.168.122.103		mycat		
+	
+1、在node01与node02间部署主从复制(略)
+
+2、部署MyCAT
+
+1) 卸载系统自带jdk
+
+[root@mycat ~]# rpm -qa | grep -E 'gcj|jdk'
+
+[root@mycat ~]# rpm -e --nodeps java-1.8.0-openjdk-headless java-1.8.0-openjdk java-1.7.0-openjdk java-1.7.0-openjdk-headless
+
+2) 安装jdk
+
+[root@mycat ~]# rpm -ivh jdk-8u121-linux-x64.rpm 
+
+[root@mycat jdk1.8.0_121]# vim /etc/profile
+
+export JAVA_HOME=/usr/java/jdk1.8.0_121
+export PATH=$PATH:$JAVA_HOME/bin
+
+[root@mycat jdk1.8.0_121]# source /etc/profile
+
+[root@mycat ~]# java -version
+java version "1.8.0_121"
+Java(TM) SE Runtime Environment (build 1.8.0_121-b13)
+Java HotSpot(TM) 64-Bit Server VM (build 25.121-b13, mixed mode)
+
+
+3) 安装MyCAT
+
+[root@mycat ~]# cat /etc/hosts
+
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+192.168.122.103	mycat.linux.com mycat
+
+[root@mycat ~]# useradd mycat
+
+[root@mycat ~]# tar xf Mycat-server-1.6-RELEASE-20161028204710-linux.tar.gz -C /usr/local/
+[root@mycat ~]# chown -R mycat.mycat /usr/local/mycat/
+
+[root@mycat ~]# vim /etc/profile
+
+export MYCAT_HOME=/usr/local/mycat
+
+[root@mycat ~]# source /etc/profile
+
+
+启动mycat
+
+[root@mycat ~]# /usr/local/mycat/bin/mycat start
+
+[root@mycat ~]# netstat -antp | grep -E "8066|9066"
+tcp6       0      0 :::9066                 :::*                    LISTEN      3181/java           
+tcp6       0      0 :::8066                 :::*                    LISTEN      3181/java   
+
+
+
+
+3、配置MyCAT实现读写分离 
+
+1) 在后端数据库创建允许mycat连接的用户
+
+mysql> GRANT all ON *.* TO "admin"@"192.168.122.103" IDENTIFIED BY "WWW.1.com";
+mysql> FLUSH PRIVILEGES;
+
+
+2) 编辑schema.xml文件
+
+[root@mycat ~]# cd /usr/local/mycat/conf/
+[root@mycat conf]# cp schema.xml schema.xml.bak
+[root@mycat conf]# cp server.xml server.xml.bak
+
+[root@mycat conf]# cat schema.xml
+
+<?xml version="1.0"?>
+<!DOCTYPE mycat:schema SYSTEM "schema.dtd">
+<mycat:schema xmlns:mycat="http://io.mycat/">
+
+	<schema name="jiaowu" checkSQLschema="false" sqlMaxLimit="100" dataNode="dn1">
+	</schema>
+
+	<dataNode name="dn1" dataHost="localhost1" database="jiaowu" />
+
+	<dataHost name="localhost1" maxCon="1000" minCon="10" balance="1"
+			  writeType="0" dbType="mysql" dbDriver="native" switchType="1"  slaveThreshold="100">
+		<heartbeat>select user()</heartbeat>
+		
+		<writeHost host="hostM1" url="192.168.122.101:3306" user="admin"
+				   password="WWW.1.com">
+		</writeHost>
+		<writeHost host="hostS1" url="192.168.122.102:3306" user="admin"
+				   password="WWW.1.com" />
+	</dataHost>
+</mycat:schema>
+
+
+[root@mycat conf]# vim server.xml
+
+    <user name="mycatuser">
+        <property name="password">redhat</property>
+        <property name="schemas">jiaowu</property>
+    </user>
+
+[root@mycat ~]# /usr/local/mycat/bin/mycat restart
+
+[root@mycat ~]# netstat -antp | grep -E "8066|9066"
+tcp6       0      0 :::9066                 :::*                    LISTEN      3873/java           
+tcp6       0      0 :::8066                 :::*                    LISTEN      3873/java    
+
+
+测试读写分离
+
+[root@node02 ~]# mysql -u mycatuser -p -h 192.168.122.103 -P 8066 
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 1
+Server version: 5.6.29-mycat-1.6-RELEASE-20161028204710 MyCat Server (OpenCloundDB)
+

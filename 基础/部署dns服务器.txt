@@ -1,0 +1,571 @@
+DNS ---- Domain Name System 域名系统
+
+	应用层协议
+	作用：根据域名解析出对应的IP地址 
+	
+
+DNS域名结构：
+
+	根域   .
+	一级域    com  cn  edu  gov  org 
+	二级域	  baidu.com, jd.com 
+	
+	
+区域zone、记录record
+
+
+区域zone：
+
+	DNS作用：
+		正向解析
+			根据主机名解析出IP地址
+		反向解析
+			根据IP地址解析出对应的主机名 
+			
+正向区域：指定一个二级域名  "uplooking.com" 
+反向区域：x.x.x.in-addr.arpa    	1.168.192.in-addr.arpa 	2.168.192.in-addr.arpa
+
+
+记录的类型：
+
+A记录
+
+	标识主机名到IP地址的对应关系  
+	
+	linux.uplooking.com 	A		192.168.1.1 
+
+NS记录
+	标识DNS服务器自身
+	配合A记录同时使用 
+	
+	NS 	ns01.uplooking.com.  
+	ns01.uplooking.com     A    192.168.1.2 
+
+
+MX记录
+
+	标识邮件服务器， 配合A记录同时使用 
+	
+	MX   5    mail01.uplooking.com. 		>>>   5：邮件服务器的优先级， 数字越小，优先级越高 
+	mail01.uplooking.com 		A     192.168.1.3 
+
+
+CNAME记录
+
+	别名记录 
+	
+	www.baidu.com    CNAME    www.a.shifen.com. 
+	
+
+PTR记录	
+
+	反向解析 
+	
+	标识IP地址到主机名的解析
+	
+	1.168.192.in-addr.arpa
+	
+		10	PTR   www.uplooking.com.			>>>   
+
+
+
+DNS的查询类型：
+
+	递归查询
+	
+		客户端只发送一次查询请求，即可获得结果
+	
+	迭代查询 
+	
+		发送多次请求，获取解析结果 
+
+
+DNS的工作流程：
+
+	1、查找本地hosts文件
+	2、向网卡配置的DNS服务器发送请求 
+		如果该DNS服务器可以给客户端响应，客户端收到响应会在本地缓存
+	3、服务器会代替客户端向根服务器发送请求
+	4、根服务器以下级服务器地址响应请求，递次类推 
+	
+
+
+部署DNS服务器
+
+	软件：
+		bind   核心软件 
+		bind-chroot    增强DNS服务器安全性
+		
+	配置文件：
+
+		主配置文件：/var/named/chroot/etc/named.conf   
+		
+			建立区域 
+			服务器全局相关的配置 
+	
+		记录文件：/var/named/chroot/var/named/* 
+
+	端口：
+	
+		53/udp 		接收客户端解析请求
+		53/tcp 		主、从DNS服务器实现数据同步 
+	
+
+
+示例01：部署DNS服务器 
+
+	ftp.uplooking.com 		192.168.1.1
+	web.uplooking.com		192.168.1.2
+	mail01.uplooking.com	192.168.1.3
+	
+	
+1、安装软件 
+
+[root@dns_server_01 ~]# yum install -y bind bind-chroot 
+
+
+2、编辑主配置文件named.conf, 建立区域 	
+
+[root@dns_server_01 ~]# vim /var/named/chroot/etc/named.conf 
+
+	options {
+	   directory "/var/named";			>>>指定记录文件的存放位置
+	};
+
+	zone "uplooking.com" {
+	   type master;						>>>指定区域的类型为master
+	   file "uplooking.com.zone";		>>>指定区域对应的记录文件名称，可自定义 
+	};
+
+
+3、准备区域的记录文件 
+
+[root@dns_server_01 ~]# cp /usr/share/doc/bind-9.9.4/sample/var/named/named.localhost  /var/named/chroot/var/named/uplooking.com.zone
+
+
+4、编辑记录文件 
+
+[root@dns_server_01 ~]# vim /var/named/chroot/var/named/uplooking.com.zone
+
+$TTL 1D
+@	IN SOA	uplooking.com. 454452000.qq.com. (
+					0	; serial
+					1D	; refresh
+					1H	; retry
+					1W	; expire
+					3H )	; minimum
+	    NS	ns01.uplooking.com.
+ns01	A	192.168.122.101
+ftp	    A	192.168.1.1
+web	    A	192.168.1.2
+	    MX   5  mail01.uplooking.com.
+mail01	A	192.168.1.3
+
+		
+		
+5、启动服务 
+
+[root@dns_server_01 ~]# systemctl start named named-chroot 
+[root@dns_server_01 ~]# systemctl enable named named-chroot
+
+[root@dns_server_01 ~]# netstat -anup | grep :53
+udp        0      0 192.168.122.101:53      0.0.0.0:*                           1400/named          
+udp        0      0 127.0.0.1:53            0.0.0.0:*                           1400/named          
+udp        0      0 127.0.0.1:53            0.0.0.0:*                           1366/named          
+udp6       0      0 ::1:53                  :::*                                1366/named          
+
+
+[root@dns_server_01 ~]# netstat -antp | grep :53
+tcp        0      0 192.168.122.101:53      0.0.0.0:*               LISTEN      1400/named          
+tcp        0      0 127.0.0.1:53            0.0.0.0:*               LISTEN      1366/named          
+tcp6       0      0 ::1:53                  :::*                    LISTEN      1366/named    
+		
+	
+
+6、测试解析 
+
+[root@dns_server_01 ~]# nslookup 
+> server 192.168.122.101
+Default server: 192.168.122.101
+Address: 192.168.122.101#53
+> 
+> ftp.uplooking.com
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+Name:	ftp.uplooking.com
+Address: 192.168.1.1
+> 
+> web.uplooking.com
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+Name:	web.uplooking.com
+Address: 192.168.1.2
+> 
+> mail01.uplooking.com
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+Name:	mail01.uplooking.com
+Address: 192.168.1.3
+
+
+
+泛域名解析：
+
+	uplooking.com.	A	192.168.1.2
+	*	A		192.168.1.2
+
+
+DNS解析实现简单负载均衡 
+
+	web	A	192.168.1.2
+	web	A	192.168.1.10
+
+	
+[root@client ~]# nslookup 
+> web.uplooking.com
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+Name:	web.uplooking.com
+Address: 192.168.1.2
+Name:	web.uplooking.com
+Address: 192.168.1.10
+> 
+> web.uplooking.com
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+Name:	web.uplooking.com
+Address: 192.168.1.10
+Name:	web.uplooking.com
+Address: 192.168.1.2
+	
+	
+
+
+
+DNS服务器的测试工具：
+	1) nslookup 
+	2) dig 
+	
+
+[root@localhost ~]# dig @192.168.122.101 -t A ftp.uplooking.com 
+
+[root@localhost ~]# dig @192.168.122.101 -t A mail01.uplooking.com
+
+
+
+
+
+示例02：部署DNS服务器实现反向解析
+
+	注意：
+		依赖于正向解析 
+	
+	1) 反垃圾邮件
+	2) 黑名单
+	
+
+1、编辑主配置文件，建立反向区域 
+
+[root@dns_server_01 ~]# vim  /var/named/chroot/etc/named.conf
+
+	......
+	
+	zone "1.168.192.in-addr.arpa" {
+	   type master;
+	   file "192.168.1.zone";
+	};
+
+
+2、准备反向区域的记录文件 
+
+[root@dns_server_01 ~]# cd /var/named/chroot/var/named/
+
+[root@dns_server_01 named]# cp uplooking.com.zone 192.168.1.zone
+
+[root@dns_server_01 named]# vim 192.168.1.zone
+$TTL 1D
+@	IN SOA	uplooking.com. 454452000.qq.com. (
+					0	; serial
+					1D	; refresh
+					1H	; retry
+					1W	; expire
+					3H )	; minimum
+	NS	ns01.uplooking.com.
+ns01	A	192.168.122.101
+1	PTR	ftp.uplooking.com.
+2	PTR	web.uplooking.com.
+10	PTR	web.uplooking.com.
+3	PTR	mail01.uplooking.com.
+
+
+
+3、测试反向解析 
+
+[root@client ~]# nslookup 
+> 
+> 
+> 192.168.1.1
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+1.1.168.192.in-addr.arpa	name = ftp.uplooking.com.
+> 
+> 192.168.1.2
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+2.1.168.192.in-addr.arpa	name = web.uplooking.com.
+> 
+> 192.168.1.10
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+10.1.168.192.in-addr.arpa	name = web.uplooking.com.
+> 
+> 192.168.1.3
+Server:		192.168.122.101
+Address:	192.168.122.101#53
+
+3.1.168.192.in-addr.arpa	name = mail01.uplooking.com.
+> exit    
+
+
+
+
+DNS主、从服务器 
+
+	作用：部署一台从服务器，实现对主DNS服务器的备份 
+	
+	
+示例：部署DNS主、从服务器
+
+
+	环境：
+		192.168.122.101	dns_server_01   主DNS服务器 
+		192.168.122.102 dns_server_02	从DNS服务器 
+		
+1、修改主服务器的配置 
+
+1) 在主服务器必须存在两台服务器的NS记录 
+
+[root@dns_server_01 ~]# vim /var/named/chroot/var/named/uplooking.com.zone
+
+	NS	ns01.uplooking.com.
+	NS	ns02.uplooking.com.
+ns02	A	192.168.122.102
+ns01	A	192.168.122.101
+
+同样的方法修改反向区域记录文件的NS记录  
+
+2) 修改主配置文件，指定从服务器的地址 
+
+[root@dns_server_01 ~]# vim /var/named/chroot/etc/named.conf 
+
+	options {
+	   directory "/var/named";
+	};
+
+	zone "uplooking.com" {
+	   type master;
+	   file "uplooking.com.zone";
+	   allow-transfer { 192.168.122.102; };		>>>>指定从服务器的地址 
+	};
+
+	zone "1.168.192.in-addr.arpa" {
+	   type master;
+	   file "192.168.1.zone";
+	   allow-transfer { 192.168.122.102; };		>>>>指定从服务器的地址 
+	  
+	};
+
+[root@dns_server_01 ~]# systemctl restart named named-chroot
+		
+		
+		
+		
+2、配置从服务器 
+
+1) 建立与主服务器相同名称的区域 
+
+[root@dns_server_02 ~]# yum install -y bind bind-chroot 
+
+[root@dns_server_02 ~]# vim /var/named/chroot/etc/named.conf
+
+	options {
+	   directory "/var/named";
+	};
+
+	zone "uplooking.com" {
+	   type slave;							>>>>指定区域类型为slave
+	   masters { 192.168.122.101; };		>>>>指定主服务器的地址
+	   file "slaves/uplooking.com.zone";
+	};
+
+
+	zone "1.168.192.in-addr.arpa" {
+	   type slave;
+	   masters { 192.168.122.101; };
+	   file "slaves/192.168.1.zone";
+	};
+	
+		
+2) 启动从服务器
+
+[root@dns_server_02 ~]# systemctl start named named-chroot
+[root@dns_server_02 ~]# systemctl enable named named-chroot
+
+验证记录文件复制成功 
+
+[root@dns_server_02 ~]# ls /var/named/chroot/var/named/slaves/
+192.168.1.zone  uplooking.com.zone
+		
+		
+验证使用从服务器解析
+
+[root@localhost ~]# nslookup 
+> 
+> 
+> server 192.168.122.102
+Default server: 192.168.122.102
+Address: 192.168.122.102#53
+> 
+	
+
+
+验证主服务器记录文件发生变化，其会将变化的数据同步给从服务器
+
+1) 编辑记录文件，添加一条新记录，手动修改序列号serial
+
+[root@dns_server_01 ~]# cat /var/named/chroot/var/named/uplooking.com.zone 
+$TTL 1D
+@	IN SOA	uplooking.com. 454452000.qq.com. (
+					100	; serial				>>>改大序列号
+					1D	; refresh
+					1H	; retry
+					1W	; expire
+					3H )	; minimum
+	NS	ns01.uplooking.com.
+	NS	ns02.uplooking.com.
+ns02	A	192.168.122.102
+ns01	A	192.168.122.101
+ftp	A	192.168.1.1
+web	A	192.168.1.2
+web	A	192.168.1.10
+game	A	192.168.1.250						>>>添加的新记录 
+uplooking.com.	A	192.168.1.2
+*	A		192.168.1.2
+	MX   5  mail01.uplooking.com.
+mail01	A	192.168.1.3
+	
+		
+		
+2) 重启主服务器的服务，实现数据传输 
+
+[root@dns_server_01 ~]# systemctl restart named named-chroot
+
+[root@dns_server_01 ~]# tail /var/log/messages
+
+Jul 31 16:36:18 dns_server_01 named[5305]: zone uplooking.com/IN: sending notifies (serial 100)
+Jul 31 16:36:18 dns_server_01 named[5305]: zone 1.168.192.in-addr.arpa/IN: sending notifies (serial 0)
+Jul 31 16:36:18 dns_server_01 named[5305]: client 192.168.122.102#35753 (uplooking.com): transfer of 'uplooking.com/IN': AXFR-style IXFR started
+Jul 31 16:36:18 dns_server_01 named[5305]: client 192.168.122.102#35753 (uplooking.com): transfer of 'uplooking.com/IN': AXFR-style IXFR ended
+Jul 31 16:36:18 dns_server_01 named[5305]: client 192.168.122.102#1469: received notify for zone 'uplooking.com'
+		
+		
+		
+3) 在客户端使用从服务器解析新的记录 
+
+[root@localhost ~]# nslookup 
+> server 192.168.122.102
+Default server: 192.168.122.102
+Address: 192.168.122.102#53
+> 
+> 
+> game.uplooking.com 
+Server:		192.168.122.102
+Address:	192.168.122.102#53
+
+Name:	game.uplooking.com
+Address: 192.168.1.250
+
+> exit
+
+
+
+
+
+DNS转发器 
+
+
+[root@dns_server_01 ~]# cat /var/named/chroot/etc/named.conf 
+
+
+	options {
+	   directory "/var/named";
+	   forwarders { 192.168.122.103; };			>>>指定转发的服务器地址 
+	};
+
+
+
+
+
+作业：自定义vmnet 1
+
+1、部署DNS服务器，实现如下解析：
+
+	web:
+	
+		www.a.org	1.1.1.1
+		www.b.org   1.1.1.2
+		
+	
+	ftp:
+	
+		ftp.a.org 	
+		ftp.b.org 
+		
+	mail
+	
+		mail01.a.org 
+		mail02.a.org 
+		
+同时实现反向解析，及从服务器 
+
+
+
+2、如图
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

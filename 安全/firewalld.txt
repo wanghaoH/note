@@ -1,0 +1,256 @@
+firewall防火墙
+
+	依赖firewalld服务
+	
+		firewall-cmd 命令行工具 
+		
+		firewall-config   图形化配置工具
+		
+		
+	区域  zone  
+
+
+1、查看firewalld防火墙自带的区域名
+
+[root@node_01 ~]# firewall-cmd --get-zones 
+block dmz drop external home internal public trusted work
+
+	特殊区域：
+		drop, block: 拒绝所有访问;   黑名单
+		trusted：可信任区域;     放行所有访问     白名单
+
+
+2、查看当前使用的默认区域
+
+[root@node_01 ~]# firewall-cmd --get-default-zone 
+public
+
+
+3、查看某区域的详细配置
+
+[root@node_01 ~]# firewall-cmd --list-all --zone=public 
+
+public (default, active)
+  interfaces: eth0
+  sources: 
+  services: dhcpv6-client ssh
+  ports: 
+  masquerade: no
+  forward-ports: 
+  icmp-blocks: 
+  rich rules: 
+  
+  
+4、修改默认区域
+
+[root@node_01 ~]# firewall-cmd --set-default-zone=trusted 
+success
+[root@node_01 ~]# firewall-cmd --reload 
+success
+[root@node_01 ~]# firewall-cmd --get-default-zone 
+trusted
+  
+
+
+
+数据过滤
+
+1、放行服务
+
+1) 服务名称
+
+[root@node_01 ~]# firewall-cmd --permanent --add-service=http --zone=public 
+success
+[root@node_01 ~]# firewall-cmd --reload 
+success
+[root@node_01 ~]# firewall-cmd --list-all --zone=public 
+public (default, active)
+  interfaces: eth0
+  sources: 
+  services: dhcpv6-client http ssh
+  ports: 
+  masquerade: no
+  forward-ports: 
+  icmp-blocks: 
+  rich rules: 
+	
+  
+[root@node_01 ~]# firewall-cmd --permanent --add-service=ftp --zone=public
+success
+[root@node_01 ~]# firewall-cmd --reload 
+success
+  
+
+2) 端口号 
+
+[root@node_01 ~]# firewall-cmd --permanent --add-port=3306/tcp --zone=public 
+success
+[root@node_01 ~]# firewall-cmd --permanent --add-port=3260/tcp --zone=public 
+success
+[root@node_01 ~]# firewall-cmd --reload 
+success
+[root@node_01 ~]# firewall-cmd --list-all
+public (default, active)
+  interfaces: eth0
+  sources: 
+  services: dhcpv6-client ftp http ssh
+  ports: 3306/tcp 3260/tcp
+  masquerade: no
+  forward-ports: 
+  icmp-blocks: 
+  rich rules: 
+  
+
+2、禁止服务 
+
+	--remove-service=
+	--remove-port=
+
+	
+3、firewalld默认是允许所有icmp协议数据通过， 通过以下方式可以禁止ping
+
+[root@node_01 ~]# firewall-cmd --permanent --add-icmp-block=echo-request 
+success
+[root@node_01 ~]# firewall-cmd --reload 
+success
+[root@node_01 ~]# firewall-cmd --list-all
+public (default, active)
+  interfaces: eth0
+  sources: 
+  services: dhcpv6-client ftp http ssh
+  ports: 3306/tcp 3260/tcp
+  masquerade: no
+  forward-ports: 
+  icmp-blocks: echo-request
+  rich rules: 
+	
+	
+
+4、验证drop区域
+
+[root@node_01 ~]# firewall-cmd --permanent --add-source=20.20.20.11 --zone=drop 
+success
+[root@node_01 ~]# firewall-cmd --reload 
+success
+[root@node_01 ~]# firewall-cmd --list-all --zone=drop 
+drop
+  interfaces: 
+  sources: 20.20.20.11
+  services: 
+  ports: 
+  masquerade: no
+  forward-ports: 
+  icmp-blocks: 
+  rich rules: 
+
+
+
+
+
+地址转换
+
+源IP地址转换
+
+[root@client_01 ~]# firewall-cmd --permanent --add-masquerade --zone=public 
+success
+[root@client_01 ~]# firewall-cmd --reload 
+success
+[root@client_01 ~]# firewall-cmd --list-all
+public (default, active)
+  interfaces: eth0 eth1
+  sources: 
+  services: dhcpv6-client http ssh
+  ports: 
+  masquerade: yes
+  forward-ports: 
+  icmp-blocks: 
+  rich rules: 
+
+
+端口转发：
+
+1) 本地端口转发 
+
+[root@node_01 ~]# firewall-cmd --permanent --add-forward-port=port=7777:proto=tcp:toport=80 --zone=public 
+success
+[root@node_01 ~]# firewall-cmd --reload 
+success
+[root@node_01 ~]# firewall-cmd --list-all
+public (default, active)
+  interfaces: eth0
+  sources: 
+  services: dhcpv6-client ftp http ssh
+  ports: 3306/tcp 3260/tcp
+  masquerade: no
+  forward-ports: port=7777:proto=tcp:toport=80:toaddr=
+  icmp-blocks: echo-request
+  rich rules: 
+
+
+2) 远程端口转发
+
+[root@client_01 ~]# firewall-cmd --permanent --add-forward-port=port=7777:proto=tcp:toport=80:toaddr=10.1.1.11 --zone=public 
+success
+[root@client_01 ~]# firewall-cmd --reload 
+success
+[root@client_01 ~]# firewall-cmd --list-all
+public (default, active)
+  interfaces: eth0 eth1
+  sources: 
+  services: dhcpv6-client http ssh
+  ports: 
+  masquerade: yes
+  forward-ports: port=7777:proto=tcp:toport=80:toaddr=10.1.1.11
+  icmp-blocks: 
+  rich rules: 
+
+ 
+  
+  
+  
+
+富规则   rich rule 
+
+1) 添加富规则 
+
+[root@localhost ~]# firewall-cmd --permanent --add-rich-rule="rule family=ipv4 source address=172.16.8.100/24 forward-port port=9999 protocol=tcp to-port=80 to-addr=2.2.2.2"
+success
+[root@localhost ~]# firewall-cmd --reload 
+success
+
+
+2) 删除富规则
+
+[root@localhost ~]# firewall-cmd --permanent --remove-rich-rule='rule family="ipv4" source address="172.16.8.100/24" forward-port port="9999" protocol="tcp" to-port="80" to-addr="2.2.2.2"'
+success
+[root@localhost ~]# firewall-cmd --reload 
+success
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+  
